@@ -77,18 +77,6 @@ namespace GymFlow.Aplicacion
             {
                 _transaccion.IniciarTransaccion();
 
-                // Calcular saldo ANTES del crédito para verificar si había deuda previa.
-                var movimientosPrevios = _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id);
-                decimal saldoPrevio = 0m;
-                foreach (var m in movimientosPrevios)
-                {
-                    if (m.TipoMovimiento.Nombre == NombresTipoMovimiento.Debito)
-                        saldoPrevio += m.Importe;
-                    else if (m.TipoMovimiento.Nombre == NombresTipoMovimiento.Credito)
-                        saldoPrevio -= m.Importe;
-                }
-                bool habiaDeuda = saldoPrevio > 0;
-
                 // Registrar recibo y movimiento de crédito.
                 string metodoNormalizado = MediosPagoValidos.FirstOrDefault(m => string.Equals(m, metodoPago.Trim(), StringComparison.OrdinalIgnoreCase)) ?? metodoPago.Trim();
 
@@ -131,8 +119,8 @@ namespace GymFlow.Aplicacion
                         throw new InvalidOperationException($"El movimiento {m.Id} tiene un tipo desconocido.");
                 }
 
-                // Si había deuda previa y el saldo resultante <= 0, activar cuota y fijar vencimiento.
-                if (habiaDeuda && saldo <= 0)
+                // Si el saldo resultante <= 0, activar cuota y fijar vencimiento.
+                if (saldo <= 0)
                 {
                     cuotaCliente.FechaVencimiento = hoy.AddDays(30);
                     cuotaCliente.Estado = "ACTIVO";
