@@ -23,9 +23,6 @@ namespace GymFlow.InterfazUsuario
         private Button btnBuscar;
         private Label lblNombreCliente;
         private Label lblEstadoCuota;
-        private Label lblCuotaTitulo;
-        private ComboBox cmbCuotas;
-        private Button btnAsignarCuota;
         
         private Label lblActividadTitulo;
         private ComboBox cmbActividades;
@@ -45,7 +42,6 @@ namespace GymFlow.InterfazUsuario
 
             InitializeComponent();
             CargarActividades();
-            CargarCuotas();
         }
 
         private void InitializeComponent()
@@ -54,9 +50,6 @@ namespace GymFlow.InterfazUsuario
             this.btnBuscar = new Button();
             this.lblNombreCliente = new Label();
             this.lblEstadoCuota = new Label();
-            this.lblCuotaTitulo = new Label();
-            this.cmbCuotas = new ComboBox();
-            this.btnAsignarCuota = new Button();
 
             this.lblActividadTitulo = new Label();
             this.cmbActividades = new ComboBox();
@@ -83,59 +76,41 @@ namespace GymFlow.InterfazUsuario
             this.lblEstadoCuota.Size = new Size(480, 20);
             this.lblEstadoCuota.Text = string.Empty;
 
-            this.lblCuotaTitulo.Location = new Point(20, 115);
-            this.lblCuotaTitulo.Size = new Size(50, 20);
-            this.lblCuotaTitulo.Text = "Cuota:";
-
-            this.cmbCuotas.Location = new Point(80, 112);
-            this.cmbCuotas.Size = new Size(200, 21);
-            this.cmbCuotas.DropDownStyle = ComboBoxStyle.DropDownList;
-
-            this.btnAsignarCuota.Location = new Point(290, 110);
-            this.btnAsignarCuota.Size = new Size(110, 25);
-            this.btnAsignarCuota.Text = "Asignar cuota";
-            this.btnAsignarCuota.Click += new EventHandler(this.btnAsignarCuota_Click);
-
-
-
-
-
-
-            this.lblActividadTitulo.Location = new Point(20, 155);
+            this.lblActividadTitulo.Location = new Point(20, 115);
             this.lblActividadTitulo.Size = new Size(60, 20);
             this.lblActividadTitulo.Text = "Actividad:";
 
-            this.cmbActividades.Location = new Point(80, 152);
+            this.cmbActividades.Location = new Point(80, 112);
             this.cmbActividades.Size = new Size(240, 21);
             this.cmbActividades.DropDownStyle = ComboBoxStyle.DropDownList;
 
-            this.btnInscribir.Location = new Point(330, 150);
+            this.btnInscribir.Location = new Point(330, 110);
             this.btnInscribir.Size = new Size(90, 25);
             this.btnInscribir.Text = "Inscribir";
             this.btnInscribir.Click += new EventHandler(this.btnInscribir_Click);
 
-            this.btnCuentaCorriente.Location = new Point(20, 210);
+            this.btnCuentaCorriente.Location = new Point(20, 170);
             this.btnCuentaCorriente.Size = new Size(115, 30);
             this.btnCuentaCorriente.Text = "Cuenta corriente";
             this.btnCuentaCorriente.Click += new EventHandler(this.btnCuentaCorriente_Click);
 
-            this.btnCobro.Location = new Point(145, 210);
+            this.btnCobro.Location = new Point(145, 170);
             this.btnCobro.Size = new Size(115, 30);
             this.btnCobro.Text = "Registrar cobro";
             this.btnCobro.Click += new EventHandler(this.btnCobro_Click);
 
-            this.btnDebitoMensual.Location = new Point(270, 210);
+            this.btnDebitoMensual.Location = new Point(270, 170);
             this.btnDebitoMensual.Size = new Size(115, 30);
             this.btnDebitoMensual.Text = "Débito mensual";
             this.btnDebitoMensual.Click += new EventHandler(this.btnDebitoMensual_Click);
 
-            this.btnNotaCredito.Location = new Point(395, 210);
+            this.btnNotaCredito.Location = new Point(395, 170);
             this.btnNotaCredito.Size = new Size(115, 30);
             this.btnNotaCredito.Text = "Nota de crédito";
             this.btnNotaCredito.Click += new EventHandler(this.btnNotaCredito_Click);
 
             this.Text = "Recepción";
-            this.Size = new Size(545, 300);
+            this.Size = new Size(545, 260);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -144,9 +119,6 @@ namespace GymFlow.InterfazUsuario
             this.Controls.Add(this.btnBuscar);
             this.Controls.Add(this.lblNombreCliente);
             this.Controls.Add(this.lblEstadoCuota);
-            this.Controls.Add(this.lblCuotaTitulo);
-            this.Controls.Add(this.cmbCuotas);
-            this.Controls.Add(this.btnAsignarCuota);
 
             this.Controls.Add(this.lblActividadTitulo);
             this.Controls.Add(this.cmbActividades);
@@ -166,17 +138,6 @@ namespace GymFlow.InterfazUsuario
             this.cmbActividades.DataSource = actividades;
             this.cmbActividades.DisplayMember = "Nombre";
             this.cmbActividades.ValueMember = "Id";
-        }
-
-        private void CargarCuotas()
-        {
-            var cuotas = _clienteServicio.GetAllCuotas()
-                .Select(c => new { c.Id, Nombre = c.Nombre + " - $" + c.Precio.ToString("N2") })
-                .ToList();
-
-            this.cmbCuotas.DataSource = cuotas;
-            this.cmbCuotas.DisplayMember = "Nombre";
-            this.cmbCuotas.ValueMember = "Id";
         }
 
         private void btnBuscar_Click(object sender, EventArgs e)
@@ -229,43 +190,6 @@ namespace GymFlow.InterfazUsuario
                 _cuotaClienteCargada = null;
             }
         }
-
-        private void btnAsignarCuota_Click(object sender, EventArgs e)
-        {
-            if (_clienteCargado == null)
-            {
-                MessageBox.Show("Primero busque un cliente por DNI.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            if (this.cmbCuotas.SelectedValue == null)
-            {
-                MessageBox.Show("Seleccione una cuota para asignar.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            int cuotaId = (int)this.cmbCuotas.SelectedValue;
-
-            try
-            {
-                if (_clienteServicio.AsignarCuota(_clienteCargado.Id, cuotaId))
-                {
-                    MessageBox.Show("Cuota asignada correctamente con vigencia de 30 días.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    RefrescarCliente();
-                }
-                else
-                {
-                    MessageBox.Show("No se pudo asignar la cuota.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex.ToString());
-                MessageBox.Show("Ocurrió un error al asignar la cuota.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-
 
         private void btnInscribir_Click(object sender, EventArgs e)
         {

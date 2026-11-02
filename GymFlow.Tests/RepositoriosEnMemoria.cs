@@ -2,6 +2,7 @@ using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace GymFlow.Tests
@@ -24,6 +25,8 @@ namespace GymFlow.Tests
         public int TransaccionesIniciadas;
         public int Confirmadas;
         public int Revertidas;
+        public IsolationLevel? UltimoNivelAislamiento;
+        public int NotaVentaBloqueadaId;
 
         public bool FallarAlGuardarMovimiento;
         public bool RechazarGuardarComprobante;
@@ -168,6 +171,19 @@ namespace GymFlow.Tests
         {
             return _datos.Comprobantes.FirstOrDefault(c => c.Id == id);
         }
+
+        public void BloquearNotaVentaParaAcreditar(int notaVentaId)
+        {
+            _datos.NotaVentaBloqueadaId = notaVentaId;
+        }
+
+        public decimal GetTotalNotasCreditoByNotaVenta(int notaVentaId)
+        {
+            return _datos.Comprobantes
+                .OfType<NotaCredito>()
+                .Where(nc => nc.NotaVentaId == notaVentaId)
+                .Sum(nc => nc.Total);
+        }
     }
 
     public class CuotaClienteRepositorioEnMemoria : ICuotaClienteRepositorio
@@ -304,6 +320,16 @@ namespace GymFlow.Tests
                 _datos.Cuentas.Add(cliente.Cuenta);
             }
 
+            if (cliente.CuotasCliente != null)
+            {
+                foreach (CuotaCliente cuotaCliente in cliente.CuotasCliente)
+                {
+                    cuotaCliente.Id = _datos.CuotasCliente.Count == 0 ? 1 : _datos.CuotasCliente.Max(cc => cc.Id) + 1;
+                    cuotaCliente.ClienteId = cliente.Id;
+                    _datos.CuotasCliente.Add(cuotaCliente);
+                }
+            }
+
             _datos.Clientes.Add(cliente);
             return true;
         }
@@ -376,7 +402,13 @@ namespace GymFlow.Tests
 
         public void IniciarTransaccion()
         {
+            IniciarTransaccion(IsolationLevel.ReadCommitted);
+        }
+
+        public void IniciarTransaccion(IsolationLevel isolationLevel)
+        {
             _datos.TransaccionesIniciadas++;
+            _datos.UltimoNivelAislamiento = isolationLevel;
             _comprobantes = _datos.Comprobantes.ToList();
             _movimientos = _datos.Movimientos.ToList();
             _inscripciones = _datos.Inscripciones.ToList();

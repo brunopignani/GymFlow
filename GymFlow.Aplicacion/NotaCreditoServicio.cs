@@ -2,6 +2,7 @@ using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace GymFlow.Aplicacion
@@ -55,13 +56,31 @@ namespace GymFlow.Aplicacion
 
             try
             {
-                _transaccion.IniciarTransaccion();
+                _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
+
+                notaVenta = BuscarNotaVentaDeLaCuenta(cuenta.Id, comprobanteId);
+
+                if (notaVenta == null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                _comprobanteRepositorio.BloquearNotaVentaParaAcreditar(notaVenta.Id);
+                decimal totalNotasCreditoAnteriores = _comprobanteRepositorio.GetTotalNotasCreditoByNotaVenta(notaVenta.Id);
+
+                if (importe + totalNotasCreditoAnteriores > notaVenta.Total)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
 
                 NotaCredito notaCredito = new NotaCredito();
                 notaCredito.Numero = GenerarNumeroNotaCredito();
                 notaCredito.FechaEmision = hoy;
                 notaCredito.Total = importe;
                 notaCredito.Motivo = motivo;
+                notaCredito.NotaVentaId = notaVenta.Id;
 
                 if (!_comprobanteRepositorio.AddComprobante(notaCredito))
                 {

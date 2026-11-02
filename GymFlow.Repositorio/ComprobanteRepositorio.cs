@@ -39,5 +39,18 @@ namespace GymFlow.Repositorio
                     .ThenInclude(cc => cc.Cuota)
                 .FirstOrDefault(c => c.Id == id);
         }
+
+        public void BloquearNotaVentaParaAcreditar(int notaVentaId)
+        {
+            _contexto.Database.ExecuteSqlInterpolated(
+                $"SELECT [Id] FROM [T_NOTA_VENTA] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {notaVentaId}");
+        }
+
+        public decimal GetTotalNotasCreditoByNotaVenta(int notaVentaId)
+        {
+            return _contexto.NotasCredito
+                .Where(nc => nc.NotaVentaId == notaVentaId)
+                .Sum(nc => (decimal?)nc.Total) ?? 0m;
+        }
     }
 }

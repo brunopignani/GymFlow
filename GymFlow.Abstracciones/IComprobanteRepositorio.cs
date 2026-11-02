@@ -8,5 +8,7 @@ namespace GymFlow.Abstracciones
         bool AddComprobante(Comprobante comprobante);
         List<Comprobante> GetAllComprobantes();
         Comprobante GetComprobanteById(int id);
+        void BloquearNotaVentaParaAcreditar(int notaVentaId);
+        decimal GetTotalNotasCreditoByNotaVenta(int notaVentaId);
     }
 }

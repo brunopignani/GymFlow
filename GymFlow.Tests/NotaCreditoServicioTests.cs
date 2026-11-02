@@ -2,6 +2,7 @@ using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Data;
 using System.Linq;
 
 namespace GymFlow.Tests
@@ -39,6 +40,7 @@ namespace GymFlow.Tests
             NotaCredito notaCredito = datos.Comprobantes.OfType<NotaCredito>().Single();
             Assert.AreEqual(300m, notaCredito.Total);
             Assert.AreEqual("Bonificación", notaCredito.Motivo);
+            Assert.AreEqual(1, notaCredito.NotaVentaId);
 
             Movimiento movimiento = datos.Movimientos.Last();
             Assert.AreEqual(notaCredito.Id, movimiento.ComprobanteId);
@@ -46,6 +48,38 @@ namespace GymFlow.Tests
             Assert.AreEqual(2, movimiento.TipoMovimientoId);
             Assert.AreEqual(300m, movimiento.Importe);
             Assert.AreEqual(1, datos.Confirmadas);
+            Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
+            Assert.AreEqual(1, datos.NotaVentaBloqueadaId);
+        }
+
+        [TestMethod]
+        public void EmitirNotaCredito_NotasParcialesAcumuladasHastaElTotal_EsValido()
+        {
+            DatosEnMemoria datos = CrearConNotaVenta();
+            NotaCreditoServicio servicio = CrearServicio(datos);
+
+            Assert.IsTrue(servicio.EmitirNotaCredito(1, 1, 400m, "Primera parte"));
+            Assert.IsTrue(servicio.EmitirNotaCredito(1, 1, 600m, "Saldo restante"));
+
+            Assert.AreEqual(1000m, datos.Comprobantes.OfType<NotaCredito>().Sum(nc => nc.Total));
+        }
+
+        [TestMethod]
+        public void EmitirNotaCredito_ImporteSuperaElSaldoRestante_RetornaFalseYRevierte()
+        {
+            DatosEnMemoria datos = CrearConNotaVenta();
+            NotaCreditoServicio servicio = CrearServicio(datos);
+
+            Assert.IsTrue(servicio.EmitirNotaCredito(1, 1, 600m, "Primera parte"));
+            int comprobantesAntes = datos.Comprobantes.Count;
+            int movimientosAntes = datos.Movimientos.Count;
+
+            Assert.IsFalse(servicio.EmitirNotaCredito(1, 1, 400.01m, "Exceso"));
+
+            Assert.AreEqual(comprobantesAntes, datos.Comprobantes.Count);
+            Assert.AreEqual(movimientosAntes, datos.Movimientos.Count);
+            Assert.AreEqual(1, datos.Comprobantes.OfType<NotaCredito>().Count());
+            Assert.AreEqual(1, datos.Revertidas);
         }
 
         [TestMethod]

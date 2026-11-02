@@ -20,16 +20,6 @@ namespace GymFlow.Aplicacion
             ICuotaClienteRepositorio cuotaClienteRepositorio,
             IInscripcionRepositorio inscripcionRepositorio,
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
-            IMovimientoRepositorio movimientoRepositorio)
-            : this(clienteRepositorio, cuotaClienteRepositorio, inscripcionRepositorio, cuentaCorrienteRepositorio, movimientoRepositorio, null)
-        {
-        }
-
-        public ClienteServicio(
-            IClienteRepositorio clienteRepositorio,
-            ICuotaClienteRepositorio cuotaClienteRepositorio,
-            IInscripcionRepositorio inscripcionRepositorio,
-            ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
             IMovimientoRepositorio movimientoRepositorio,
             ICuotaRepositorio cuotaRepositorio)
         {
@@ -82,7 +72,23 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
+            List<Cuota> cuotas = _cuotaRepositorio.GetAllCuotas();
+
+            if (cuotas.Count != 1 || !string.Equals(cuotas[0].Nombre, "Mensual", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             cliente.Cuenta = new CuentaCorriente();
+            cliente.CuotasCliente = new List<CuotaCliente>
+            {
+                new CuotaCliente
+                {
+                    CuotaId = cuotas[0].Id,
+                    FechaVencimiento = null,
+                    Estado = null
+                }
+            };
 
             return _clienteRepositorio.AddCliente(cliente);
         }
@@ -136,51 +142,6 @@ namespace GymFlow.Aplicacion
         public CuotaCliente GetCuotaActivaByCliente(int clienteId)
         {
             return _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
-        }
-
-        public List<Cuota> GetAllCuotas()
-        {
-            return _cuotaRepositorio != null ? _cuotaRepositorio.GetAllCuotas() : new List<Cuota>();
-        }
-
-        public bool AsignarCuota(int clienteId, int cuotaId)
-        {
-            Cliente cliente = _clienteRepositorio.GetAllClientes().FirstOrDefault(c => c.Id == clienteId);
-
-            if (cliente == null)
-            {
-                return false;
-            }
-
-            if (_cuotaRepositorio != null && _cuotaRepositorio.GetCuotaById(cuotaId) == null)
-            {
-                return false;
-            }
-
-            // Si ya existe una cuota activa (con vencimiento futuro), no sobrescribir.
-            CuotaCliente activa = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
-
-            if (activa != null && activa.FechaVencimiento.HasValue && activa.FechaVencimiento.Value >= DateTime.Today)
-            {
-                return false;
-            }
-
-            if (activa != null)
-            {
-                // Reutilizar el registro existente, actualizar cuota pero limpiar vigencia.
-                activa.CuotaId = cuotaId;
-                activa.FechaVencimiento = null;
-                activa.Estado = null;
-                return _cuotaClienteRepositorio.UpdateCuotaCliente(activa);
-            }
-
-            CuotaCliente nueva = new CuotaCliente();
-            nueva.ClienteId = clienteId;
-            nueva.CuotaId = cuotaId;
-            nueva.FechaVencimiento = null;
-            nueva.Estado = null;
-
-            return _cuotaClienteRepositorio.AddCuotaCliente(nueva);
         }
 
         public List<EstadoCliente> GetEstadoClientes()

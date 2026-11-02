@@ -1,3 +1,4 @@
+using System.Data;
 using GymFlow.Abstracciones;
 using GymFlow.ContextoBD;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,11 @@ namespace GymFlow.Repositorio
         public void IniciarTransaccion()
         {
             _transaccion = _contexto.Database.BeginTransaction();
+        }
+
+        public void IniciarTransaccion(IsolationLevel isolationLevel)
+        {
+            _transaccion = _contexto.Database.BeginTransaction(isolationLevel);
         }
 
         public void ConfirmarTransaccion()

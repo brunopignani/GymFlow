@@ -16,7 +16,8 @@ namespace GymFlow.Tests
                 new CuotaClienteRepositorioEnMemoria(datos),
                 new InscripcionRepositorioEnMemoria(datos),
                 new CuentaCorrienteRepositorioEnMemoria(datos),
-                new MovimientoRepositorioEnMemoria(datos));
+                new MovimientoRepositorioEnMemoria(datos),
+                new CuotaRepositorioEnMemoria(datos));
         }
 
         private Cliente NuevoCliente(int dni)
@@ -35,6 +36,35 @@ namespace GymFlow.Tests
             Assert.IsTrue(resultado);
             Cliente guardado = datos.Clientes.Single(c => c.Dni == 222);
             Assert.IsTrue(datos.Cuentas.Any(cc => cc.ClienteId == guardado.Id));
+            CuotaCliente cuotaCliente = datos.CuotasCliente.Single(cc => cc.ClienteId == guardado.Id);
+            Assert.AreEqual(1, cuotaCliente.CuotaId);
+            Assert.IsNull(cuotaCliente.FechaVencimiento);
+            Assert.IsNull(cuotaCliente.Estado);
+            Assert.AreEqual(0, datos.Movimientos.Count);
+        }
+
+        [TestMethod]
+        public void AddCliente_AltaRepetida_NoDuplicaLaCuotaAsignada()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            ClienteServicio servicio = CrearServicio(datos);
+            Cliente cliente = NuevoCliente(222);
+
+            Assert.IsTrue(servicio.AddCliente(cliente));
+            Assert.IsFalse(servicio.AddCliente(cliente));
+
+            Assert.AreEqual(1, datos.CuotasCliente.Count(cc => cc.ClienteId == cliente.Id));
+        }
+
+        [TestMethod]
+        public void AddCliente_CuotaMensualNoUnica_NoGuardaElCliente()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.Cuotas.Add(new Cuota { Id = 2, Nombre = "Anual", Precio = 10000m });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(222)));
+            Assert.IsFalse(datos.Clientes.Any(c => c.Dni == 222));
         }
 
         [TestMethod]
@@ -127,6 +157,7 @@ namespace GymFlow.Tests
             ClienteServicio servicio = CrearServicio(datos);
             servicio.AddCliente(NuevoCliente(222));
             int id = datos.Clientes.Single(c => c.Dni == 222).Id;
+            datos.CuotasCliente.RemoveAll(cc => cc.ClienteId == id);
 
             Assert.IsTrue(servicio.DeleteCliente(id));
             Assert.IsFalse(datos.Clientes.Any(c => c.Id == id));

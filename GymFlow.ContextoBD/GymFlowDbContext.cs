@@ -118,6 +118,15 @@ namespace GymFlow.ContextoBD
                 .HasOne(nv => nv.CuotaCliente)
                 .WithMany()
                 .HasForeignKey(nv => nv.CuotaClienteId);
+
+            modelBuilder.Entity<NotaCredito>()
+                .HasOne(nc => nc.NotaVenta)
+                .WithMany()
+                .HasForeignKey(nc => nc.NotaVentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<NotaCredito>()
+                .HasIndex(nc => nc.NotaVentaId);
         }
     }
 }
