@@ -7,6 +7,11 @@ namespace GymFlow.Aplicacion
         public Cliente Cliente { get; set; }
         public CuotaCliente CuotaCliente { get; set; }
         public bool TieneCuota { get; set; }
-        public bool Vigente { get; set; }
+        public bool Vigente
+        {
+            get { return Estado == EstadosCliente.Activo; }
+        }
+
+        public string Estado => ClienteServicio.DeterminarEstadoCuota(CuotaCliente);
     }
 }

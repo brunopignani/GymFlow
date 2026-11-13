@@ -12,7 +12,8 @@ namespace GymFlow.Tests
         {
             return new ActividadServicio(
                 new ActividadRepositorioEnMemoria(datos),
-                new InscripcionRepositorioEnMemoria(datos));
+                new InscripcionRepositorioEnMemoria(datos),
+                new TransaccionEnMemoria(datos));
         }
 
         [TestMethod]
@@ -29,7 +30,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.AddActividad(new Actividad { Nombre = "Spinning", CupoMaximo = 20 }));
+            Assert.IsTrue(servicio.AddActividad(new Actividad { Nombre = "Spinning", CapacidadMaxima = 20 }));
             Assert.AreEqual(2, datos.Actividades.Count);
         }
 
@@ -38,7 +39,7 @@ namespace GymFlow.Tests
         {
             ActividadServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsTrue(servicio.AddActividad(new Actividad { Nombre = "Pilates", CupoMaximo = 30 }));
+            Assert.IsTrue(servicio.AddActividad(new Actividad { Nombre = "Pilates", CapacidadMaxima = 30 }));
         }
 
         [TestMethod]
@@ -46,7 +47,7 @@ namespace GymFlow.Tests
         {
             ActividadServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "  ", CupoMaximo = 10 }));
+            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "  ", CapacidadMaxima = 10 }));
             Assert.IsFalse(servicio.AddActividad(null));
         }
 
@@ -55,8 +56,8 @@ namespace GymFlow.Tests
         {
             ActividadServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CupoMaximo = 0 }));
-            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CupoMaximo = -3 }));
+            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CapacidadMaxima = 0 }));
+            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CapacidadMaxima = -3 }));
         }
 
         [TestMethod]
@@ -65,7 +66,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CupoMaximo = 31 }));
+            Assert.IsFalse(servicio.AddActividad(new Actividad { Nombre = "Zumba", CapacidadMaxima = 31 }));
             Assert.AreEqual(1, datos.Actividades.Count);
         }
 
@@ -75,43 +76,42 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga avanzado", CupoMaximo = 25 }));
+            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga avanzado", CapacidadMaxima = 25 }));
             Assert.AreEqual("Yoga avanzado", datos.Actividades[0].Nombre);
-            Assert.AreEqual(25, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(25, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
-        public void UpdateActividad_CupoDisponibleMasInscriptosSuperaLos30_RetornaFalse()
+        public void UpdateActividad_CapacidadMenorAInscriptos_RetornaFalse()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             AgregarInscriptos(datos, 20);
-            datos.Actividades[0].CupoMaximo = 10;
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = 11 }));
-            Assert.AreEqual(10, datos.Actividades[0].CupoMaximo);
+            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 19 }));
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
-        public void UpdateActividad_CupoDisponibleMasInscriptosIgualA30_EsValido()
+        public void UpdateActividad_CapacidadIgualAInscriptos_EsValido()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             AgregarInscriptos(datos, 20);
-            datos.Actividades[0].CupoMaximo = 10;
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = 10 }));
+            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 20 }));
+            Assert.AreEqual(20, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
-        public void UpdateActividad_ReducirElCupoConInscriptos_EsValido()
+        public void UpdateActividad_CapacidadMayorAInscriptosHasta30_EsValido()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             AgregarInscriptos(datos, 20);
-            datos.Actividades[0].CupoMaximo = 10;
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = 3 }));
+            Assert.IsTrue(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 25 }));
+            Assert.AreEqual(25, datos.Actividades[0].CapacidadMaxima);
         }
 
         private void AgregarInscriptos(DatosEnMemoria datos, int cantidad)
@@ -127,7 +127,7 @@ namespace GymFlow.Tests
         {
             ActividadServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 99, Nombre = "X", CupoMaximo = 10 }));
+            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 99, Nombre = "X", CapacidadMaxima = 10 }));
         }
 
         [TestMethod]
@@ -136,10 +136,10 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ActividadServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "", CupoMaximo = 10 }));
-            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = 31 }));
-            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = -1 }));
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "", CapacidadMaxima = 10 }));
+            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 31 }));
+            Assert.IsFalse(servicio.UpdateActividad(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 0 }));
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]

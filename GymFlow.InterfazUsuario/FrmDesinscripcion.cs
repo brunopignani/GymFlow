@@ -103,7 +103,7 @@ namespace GymFlow.InterfazUsuario
 
             int dni;
 
-            if (!int.TryParse(this.txtDni.Text, out dni))
+            if (!ValidacionesDatos.TryParseDni(this.txtDni.Text, out dni))
             {
                 MessageBox.Show("Ingrese un DNI válido.", "Desinscribir cliente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 CargarInscripciones();

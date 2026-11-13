@@ -6,5 +6,6 @@ namespace GymFlow.Abstracciones
     {
         CuentaCorriente GetCuentaCorrienteByCliente(int cliId);
         bool AddCuentaCorriente(CuentaCorriente cuentaCorriente);
+        bool DeleteCuentaCorriente(int id);
     }
 }

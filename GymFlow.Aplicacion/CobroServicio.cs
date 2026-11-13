@@ -1,6 +1,7 @@
 using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GymFlow.Aplicacion
@@ -14,6 +15,8 @@ namespace GymFlow.Aplicacion
         private readonly IMovimientoRepositorio _movimientoRepositorio;
         private readonly ITipoMovimientoRepositorio _tipoMovimientoRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly ICuotaRepositorio _cuotaRepositorio;
+        private readonly DebitoMensualServicio _debitoMensualServicio;
 
         public static readonly string[] MediosPagoValidos = { "Efectivo", "Tarjeta de Débito", "Tarjeta de Crédito", "Transferencia" };
 
@@ -24,7 +27,9 @@ namespace GymFlow.Aplicacion
             IComprobanteRepositorio comprobanteRepositorio,
             IMovimientoRepositorio movimientoRepositorio,
             ITipoMovimientoRepositorio tipoMovimientoRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            ICuotaRepositorio cuotaRepositorio,
+            DebitoMensualServicio debitoMensualServicio)
         {
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
@@ -33,6 +38,8 @@ namespace GymFlow.Aplicacion
             _movimientoRepositorio = movimientoRepositorio;
             _tipoMovimientoRepositorio = tipoMovimientoRepositorio;
             _transaccion = transaccion;
+            _cuotaRepositorio = cuotaRepositorio;
+            _debitoMensualServicio = debitoMensualServicio;
         }
 
         public static bool EsMedioPagoValido(string metodoPago)
@@ -60,22 +67,45 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            Empleado empleado = _empleadoRepositorio.GetEmpleadoById(empleadoId);
-            CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
-            CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
-            TipoMovimiento tipoCredito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
-                .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Credito);
-
-            if (empleado == null || cuenta == null || cuotaCliente == null || tipoCredito == null)
-            {
-                return false;
-            }
-
             DateTime hoy = DateTime.Today;
 
             try
             {
-                _transaccion.IniciarTransaccion();
+                _transaccion.IniciarTransaccion(System.Data.IsolationLevel.Serializable);
+
+                Empleado empleado = _empleadoRepositorio.GetEmpleadoById(empleadoId);
+                CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
+                CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
+                TipoMovimiento tipoCredito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
+                    .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Credito);
+
+                if (empleado == null || cuenta == null || cuotaCliente == null || tipoCredito == null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                string estado = ClienteServicio.DeterminarEstadoCuota(cuotaCliente, hoy);
+
+                if (estado == EstadosCliente.Activo)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (estado != EstadosCliente.Pendiente && estado != EstadosCliente.Vencido)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
+
+                if (resumen == null || resumen.MinimoExigible <= 0m || importe < resumen.MinimoExigible)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
 
                 // Registrar recibo y movimiento de crédito.
                 string metodoNormalizado = MediosPagoValidos.FirstOrDefault(m => string.Equals(m, metodoPago.Trim(), StringComparison.OrdinalIgnoreCase)) ?? metodoPago.Trim();
@@ -106,29 +136,20 @@ namespace GymFlow.Aplicacion
                     return false;
                 }
 
-                // Calcular saldo después del crédito.
-                var movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id);
-                decimal saldo = 0m;
-                foreach (var m in movimientos)
+                ResumenCobro resumenFinal = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
+
+                if (resumenFinal == null || resumenFinal.Saldo > 0)
                 {
-                    if (m.TipoMovimiento.Nombre == NombresTipoMovimiento.Debito)
-                        saldo += m.Importe;
-                    else if (m.TipoMovimiento.Nombre == NombresTipoMovimiento.Credito)
-                        saldo -= m.Importe;
-                    else
-                        throw new InvalidOperationException($"El movimiento {m.Id} tiene un tipo desconocido.");
+                    _transaccion.RevertirTransaccion();
+                    return false;
                 }
 
-                // Si el saldo resultante <= 0, activar cuota y fijar vencimiento.
-                if (saldo <= 0)
+                cuotaCliente.FechaVencimiento = hoy.AddDays(30);
+                cuotaCliente.Estado = EstadosCliente.Activo;
+                if (!_cuotaClienteRepositorio.UpdateCuotaCliente(cuotaCliente))
                 {
-                    cuotaCliente.FechaVencimiento = hoy.AddDays(30);
-                    cuotaCliente.Estado = "ACTIVO";
-                    if (!_cuotaClienteRepositorio.UpdateCuotaCliente(cuotaCliente))
-                    {
-                        _transaccion.RevertirTransaccion();
-                        return false;
-                    }
+                    _transaccion.RevertirTransaccion();
+                    return false;
                 }
 
                 _transaccion.ConfirmarTransaccion();
@@ -139,6 +160,149 @@ namespace GymFlow.Aplicacion
                 _transaccion.RevertirTransaccion();
                 throw;
             }
+        }
+
+        public ResumenCobro ObtenerResumenCobro(int clienteId)
+        {
+            CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
+            CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
+
+            if (cuenta == null || cuotaCliente == null)
+            {
+                return null;
+            }
+
+            return ObtenerResumenCobro(cuenta, cuotaCliente, DateTime.Today);
+        }
+
+        public bool AplicarSaldoAFavor(int clienteId)
+        {
+            DateTime hoy = DateTime.Today;
+
+            try
+            {
+                _transaccion.IniciarTransaccion(System.Data.IsolationLevel.Serializable);
+
+                CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
+                CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
+                TipoMovimiento tipoDebito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
+                    .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Debito);
+                Cuota cuota = cuotaCliente == null ? null : _cuotaRepositorio.GetCuotaById(cuotaCliente.CuotaId);
+
+                if (cuenta == null || cuotaCliente == null || cuota == null || cuota.Precio <= 0 || tipoDebito == null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                string estado = ClienteServicio.DeterminarEstadoCuota(cuotaCliente, hoy);
+
+                if (estado == EstadosCliente.Activo
+                    || (estado != EstadosCliente.Pendiente && estado != EstadosCliente.Vencido))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
+
+                if (resumen == null || resumen.Saldo > 0)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (!resumen.TieneNotaVentaDelPeriodo && resumen.Saldo > -cuota.Precio)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (!_debitoMensualServicio.AsegurarNotaVentaDelPeriodo(cuenta, cuotaCliente, cuota.Precio, tipoDebito, hoy))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                ResumenCobro resumenFinal = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
+
+                if (resumenFinal == null || resumenFinal.Saldo > 0)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                cuotaCliente.FechaVencimiento = hoy.AddDays(30);
+                cuotaCliente.Estado = EstadosCliente.Activo;
+
+                if (!_cuotaClienteRepositorio.UpdateCuotaCliente(cuotaCliente))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                _transaccion.ConfirmarTransaccion();
+                return true;
+            }
+            catch
+            {
+                _transaccion.RevertirTransaccion();
+                throw;
+            }
+        }
+
+        private ResumenCobro ObtenerResumenCobro(CuentaCorriente cuenta, CuotaCliente cuotaCliente, DateTime fecha)
+        {
+            Cuota cuota = _cuotaRepositorio.GetCuotaById(cuotaCliente.CuotaId);
+
+            if (cuota == null || cuota.Precio <= 0)
+            {
+                return null;
+            }
+
+            List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id);
+            decimal saldo = CalcularSaldo(movimientos);
+            bool tieneNotaVenta = _comprobanteRepositorio.GetAllComprobantes()
+                .OfType<NotaVenta>()
+                .Any(nv => nv.CuotaClienteId == cuotaCliente.Id
+                    && nv.FechaEmision.Year == fecha.Year
+                    && nv.FechaEmision.Month == fecha.Month);
+
+            decimal minimo = tieneNotaVenta
+                ? Math.Max(0m, saldo)
+                : Math.Max(0m, cuota.Precio + saldo);
+
+            return new ResumenCobro
+            {
+                CuotaCliente = cuotaCliente,
+                PrecioCuota = cuota.Precio,
+                Saldo = saldo,
+                MinimoExigible = minimo,
+                TieneNotaVentaDelPeriodo = tieneNotaVenta
+            };
+        }
+
+        private decimal CalcularSaldo(List<Movimiento> movimientos)
+        {
+            decimal saldo = 0m;
+
+            foreach (Movimiento movimiento in movimientos)
+            {
+                if (movimiento.TipoMovimiento.Nombre == NombresTipoMovimiento.Debito)
+                {
+                    saldo += movimiento.Importe;
+                }
+                else if (movimiento.TipoMovimiento.Nombre == NombresTipoMovimiento.Credito)
+                {
+                    saldo -= movimiento.Importe;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"El movimiento {movimiento.Id} tiene un tipo desconocido.");
+                }
+            }
+
+            return saldo;
         }
 
         private string GenerarNumeroRecibo()

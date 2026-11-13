@@ -23,14 +23,10 @@ namespace GymFlow.InterfazUsuario
         private Button btnBuscar;
         private Label lblNombreCliente;
         private Label lblEstadoCuota;
-        
+
         private Label lblActividadTitulo;
         private ComboBox cmbActividades;
         private Button btnInscribir;
-        private Button btnCuentaCorriente;
-        private Button btnCobro;
-        private Button btnDebitoMensual;
-        private Button btnNotaCredito;
 
         public FrmRecepcion(ClienteServicio clienteServicio, PagoServicio pagoServicio, InscripcionServicio inscripcionServicio, ActividadServicio actividadServicio, IServiceProvider serviceProvider)
         {
@@ -54,10 +50,6 @@ namespace GymFlow.InterfazUsuario
             this.lblActividadTitulo = new Label();
             this.cmbActividades = new ComboBox();
             this.btnInscribir = new Button();
-            this.btnCuentaCorriente = new Button();
-            this.btnCobro = new Button();
-            this.btnDebitoMensual = new Button();
-            this.btnNotaCredito = new Button();
 
             this.txtBuscarDni.Location = new Point(20, 20);
             this.txtBuscarDni.Size = new Size(150, 20);
@@ -81,36 +73,16 @@ namespace GymFlow.InterfazUsuario
             this.lblActividadTitulo.Text = "Actividad:";
 
             this.cmbActividades.Location = new Point(80, 112);
-            this.cmbActividades.Size = new Size(240, 21);
+            this.cmbActividades.Size = new Size(280, 21);
             this.cmbActividades.DropDownStyle = ComboBoxStyle.DropDownList;
 
-            this.btnInscribir.Location = new Point(330, 110);
+            this.btnInscribir.Location = new Point(370, 110);
             this.btnInscribir.Size = new Size(90, 25);
             this.btnInscribir.Text = "Inscribir";
             this.btnInscribir.Click += new EventHandler(this.btnInscribir_Click);
 
-            this.btnCuentaCorriente.Location = new Point(20, 170);
-            this.btnCuentaCorriente.Size = new Size(115, 30);
-            this.btnCuentaCorriente.Text = "Cuenta corriente";
-            this.btnCuentaCorriente.Click += new EventHandler(this.btnCuentaCorriente_Click);
-
-            this.btnCobro.Location = new Point(145, 170);
-            this.btnCobro.Size = new Size(115, 30);
-            this.btnCobro.Text = "Registrar cobro";
-            this.btnCobro.Click += new EventHandler(this.btnCobro_Click);
-
-            this.btnDebitoMensual.Location = new Point(270, 170);
-            this.btnDebitoMensual.Size = new Size(115, 30);
-            this.btnDebitoMensual.Text = "Débito mensual";
-            this.btnDebitoMensual.Click += new EventHandler(this.btnDebitoMensual_Click);
-
-            this.btnNotaCredito.Location = new Point(395, 170);
-            this.btnNotaCredito.Size = new Size(115, 30);
-            this.btnNotaCredito.Text = "Nota de crédito";
-            this.btnNotaCredito.Click += new EventHandler(this.btnNotaCredito_Click);
-
             this.Text = "Recepción";
-            this.Size = new Size(545, 260);
+            this.Size = new Size(500, 200);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -123,16 +95,21 @@ namespace GymFlow.InterfazUsuario
             this.Controls.Add(this.lblActividadTitulo);
             this.Controls.Add(this.cmbActividades);
             this.Controls.Add(this.btnInscribir);
-            this.Controls.Add(this.btnCuentaCorriente);
-            this.Controls.Add(this.btnCobro);
-            this.Controls.Add(this.btnDebitoMensual);
-            this.Controls.Add(this.btnNotaCredito);
         }
 
         private void CargarActividades()
         {
             var actividades = _actividadServicio.GetAllActividades()
-                .Select(a => new { a.Id, Nombre = a.Nombre + " (Cupo: " + a.CupoMaximo + ")" })
+                .Select(a =>
+                {
+                    int inscriptos = _inscripcionServicio.GetInscripcionesByActividad(a.Id).Count;
+                    int disponibles = a.CapacidadMaxima - inscriptos;
+                    return new
+                    {
+                        a.Id,
+                        Nombre = a.Nombre + " " + inscriptos + "/" + a.CapacidadMaxima + " (" + disponibles + " disponibles)"
+                    };
+                })
                 .ToList();
 
             this.cmbActividades.DataSource = actividades;
@@ -144,7 +121,7 @@ namespace GymFlow.InterfazUsuario
         {
             int dni;
 
-            if (!int.TryParse(this.txtBuscarDni.Text, out dni))
+            if (!ValidacionesDatos.TryParseDni(this.txtBuscarDni.Text, out dni))
             {
                 MessageBox.Show("Ingrese un DNI válido.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -166,17 +143,19 @@ namespace GymFlow.InterfazUsuario
                 this.lblNombreCliente.Text = "Cliente: " + _clienteCargado.Apellido + " " + _clienteCargado.Nombre + " (DNI " + _clienteCargado.Dni + ")";
                 _cuotaClienteCargada = _clienteServicio.GetCuotaActivaByCliente(_clienteCargado.Id);
 
-                if (_cuotaClienteCargada != null)
+                string estado = ClienteServicio.DeterminarEstadoCuota(_cuotaClienteCargada);
+
+                if (estado == EstadosCliente.Activo)
                 {
-                    if (_cuotaClienteCargada.FechaVencimiento.HasValue)
-                    {
-                        string vigencia = _cuotaClienteCargada.FechaVencimiento.Value >= DateTime.Today ? "ACTIVO" : "VENCIDO";
-                        this.lblEstadoCuota.Text = "Cuota: " + vigencia + " (Vence: " + _cuotaClienteCargada.FechaVencimiento.Value.ToString("dd/MM/yyyy") + ")";
-                    }
-                    else
-                    {
-                        this.lblEstadoCuota.Text = "Cuota: Pendiente de pago";
-                    }
+                    this.lblEstadoCuota.Text = "Cuota: ACTIVO (Vence: " + _cuotaClienteCargada.FechaVencimiento.Value.ToString("dd/MM/yyyy") + ")";
+                }
+                else if (estado == EstadosCliente.Vencido)
+                {
+                    this.lblEstadoCuota.Text = "Cuota: VENCIDO (Venció: " + _cuotaClienteCargada.FechaVencimiento.Value.ToString("dd/MM/yyyy") + ")";
+                }
+                else if (estado == EstadosCliente.Pendiente)
+                {
+                    this.lblEstadoCuota.Text = "Cuota: PENDIENTE (Pendiente de pago)";
                 }
                 else
                 {
@@ -222,47 +201,30 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex.ToString());
-                MessageBox.Show("Ocurrió un error al inscribir al cliente. Intente nuevamente.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnCuentaCorriente_Click(object sender, EventArgs e)
-        {
-            using (FrmCuentaCorriente formulario = _serviceProvider.GetRequiredService<FrmCuentaCorriente>())
-            {
-                formulario.ShowDialog(this);
-            }
-        }
-
-        private void btnCobro_Click(object sender, EventArgs e)
-        {
-            using (FrmCobro formulario = _serviceProvider.GetRequiredService<FrmCobro>())
-            {
-                if (_clienteCargado != null)
+                if (EsConflictoDeConcurrencia(ex))
                 {
-                    formulario.CargarClientePorDni(_clienteCargado.Dni);
+                    MessageBox.Show("La inscripción no pudo completarse debido a una contienda simultánea de cupos con otra operación. Por favor, intente nuevamente.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
-
-                formulario.ShowDialog(this);
-                RefrescarCliente();
+                else
+                {
+                    MessageBox.Show("Ocurrió un error al inscribir al cliente. Intente nuevamente.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
-        private void btnDebitoMensual_Click(object sender, EventArgs e)
+        private bool EsConflictoDeConcurrencia(Exception ex)
         {
-            using (FrmDebitoMensual formulario = _serviceProvider.GetRequiredService<FrmDebitoMensual>())
+            Exception actual = ex;
+            while (actual != null)
             {
-                formulario.ShowDialog(this);
-                RefrescarCliente();
+                if (actual.Message.IndexOf("deadlock", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    actual.Message.IndexOf("1205", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+                actual = actual.InnerException;
             }
-        }
-
-        private void btnNotaCredito_Click(object sender, EventArgs e)
-        {
-            using (FrmNotaCredito formulario = _serviceProvider.GetRequiredService<FrmNotaCredito>())
-            {
-                formulario.ShowDialog(this);
-            }
+            return false;
         }
     }
 }

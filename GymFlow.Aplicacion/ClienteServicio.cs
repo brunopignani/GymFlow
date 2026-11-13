@@ -1,5 +1,6 @@
 using GymFlow.Abstracciones;
 using GymFlow.Dominio;
+using System.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,9 @@ namespace GymFlow.Aplicacion
         private readonly ICuentaCorrienteRepositorio _cuentaCorrienteRepositorio;
         private readonly IMovimientoRepositorio _movimientoRepositorio;
         private readonly ICuotaRepositorio _cuotaRepositorio;
+        private readonly IComprobanteRepositorio _comprobanteRepositorio;
+        private readonly IPagoRepositorio _pagoRepositorio;
+        private readonly ITransaccionBD _transaccionBD;
 
         public ClienteServicio(
             IClienteRepositorio clienteRepositorio,
@@ -21,7 +25,10 @@ namespace GymFlow.Aplicacion
             IInscripcionRepositorio inscripcionRepositorio,
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
             IMovimientoRepositorio movimientoRepositorio,
-            ICuotaRepositorio cuotaRepositorio)
+            ICuotaRepositorio cuotaRepositorio,
+            IComprobanteRepositorio comprobanteRepositorio,
+            IPagoRepositorio pagoRepositorio,
+            ITransaccionBD transaccionBD)
         {
             _clienteRepositorio = clienteRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
@@ -29,6 +36,9 @@ namespace GymFlow.Aplicacion
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _movimientoRepositorio = movimientoRepositorio;
             _cuotaRepositorio = cuotaRepositorio;
+            _comprobanteRepositorio = comprobanteRepositorio;
+            _pagoRepositorio = pagoRepositorio;
+            _transaccionBD = transaccionBD;
         }
 
         public bool ValidarAutoingreso(int dni)
@@ -112,31 +122,112 @@ namespace GymFlow.Aplicacion
 
         public bool DeleteCliente(int id)
         {
-            Cliente cliente = _clienteRepositorio.GetAllClientes().FirstOrDefault(c => c.Id == id);
+            return DeleteClienteConResultado(id) == ResultadoBajaCliente.Eliminado;
+        }
 
-            if (cliente == null)
+        public ResultadoBajaCliente DeleteClienteConResultado(int id)
+        {
+            if (!_clienteRepositorio.GetAllClientes().Any(c => c.Id == id))
             {
-                return false;
+                return ResultadoBajaCliente.ClienteInexistente;
             }
 
-            if (_cuotaClienteRepositorio.GetCuotasByCliente(id).Count > 0)
+            _transaccionBD.IniciarTransaccion(IsolationLevel.Serializable);
+
+            try
             {
-                return false;
-            }
+                Cliente cliente = _clienteRepositorio.GetAllClientes().FirstOrDefault(c => c.Id == id);
 
-            if (_inscripcionRepositorio.GetInscripcionesByCliente(id).Count > 0)
+                if (cliente == null)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.ClienteInexistente);
+                }
+
+                if (cliente.UsuarioId.HasValue)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.UsuarioAsociado);
+                }
+
+                List<CuotaCliente> cuotasCliente = _cuotaClienteRepositorio.GetCuotasByCliente(id);
+
+                if (cuotasCliente.Any(cc => cc.FechaVencimiento.HasValue || cc.Estado != null))
+                {
+                    return RechazarBaja(ResultadoBajaCliente.CuotasNoIniciales);
+                }
+
+                if (_inscripcionRepositorio.GetInscripcionesByCliente(id).Count > 0)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.Inscripciones);
+                }
+
+                CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(id);
+
+                if (cuenta == null)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.CuentaCorrienteInexistente);
+                }
+
+                if (_movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id).Count > 0)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.Movimientos);
+                }
+
+                List<int> idsCuotas = cuotasCliente.Select(cc => cc.Id).ToList();
+                List<Comprobante> comprobantes = _comprobanteRepositorio.GetAllComprobantes();
+                bool tieneNotaVenta = comprobantes
+                    .OfType<NotaVenta>()
+                    .Any(nv => idsCuotas.Contains(nv.CuotaClienteId));
+                HashSet<int> idsNotasVenta = comprobantes
+                    .OfType<NotaVenta>()
+                    .Where(nv => idsCuotas.Contains(nv.CuotaClienteId))
+                    .Select(nv => nv.Id)
+                    .ToHashSet();
+                bool tieneNotaCredito = comprobantes
+                    .OfType<NotaCredito>()
+                    .Any(nc => idsNotasVenta.Contains(nc.NotaVentaId));
+
+                if (tieneNotaVenta || tieneNotaCredito)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.Comprobantes);
+                }
+
+                if (_pagoRepositorio.GetPagosByCliente(id).Count > 0)
+                {
+                    return RechazarBaja(ResultadoBajaCliente.Pagos);
+                }
+
+                foreach (CuotaCliente cuotaCliente in cuotasCliente)
+                {
+                    if (!_cuotaClienteRepositorio.DeleteCuotaCliente(cuotaCliente.Id))
+                    {
+                        throw new InvalidOperationException("No se pudo eliminar una cuota inicial del cliente.");
+                    }
+                }
+
+                if (!_cuentaCorrienteRepositorio.DeleteCuentaCorriente(cuenta.Id))
+                {
+                    throw new InvalidOperationException("No se pudo eliminar la cuenta corriente vacía del cliente.");
+                }
+
+                if (!_clienteRepositorio.DeleteCliente(id))
+                {
+                    throw new InvalidOperationException("No se pudo eliminar el cliente.");
+                }
+
+                _transaccionBD.ConfirmarTransaccion();
+                return ResultadoBajaCliente.Eliminado;
+            }
+            catch
             {
-                return false;
+                _transaccionBD.RevertirTransaccion();
+                throw;
             }
+        }
 
-            CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(id);
-
-            if (cuenta != null && _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id).Count > 0)
-            {
-                return false;
-            }
-
-            return _clienteRepositorio.DeleteCliente(id);
+        private ResultadoBajaCliente RechazarBaja(ResultadoBajaCliente resultado)
+        {
+            _transaccionBD.RevertirTransaccion();
+            return resultado;
         }
 
         public CuotaCliente GetCuotaActivaByCliente(int clienteId)
@@ -144,10 +235,25 @@ namespace GymFlow.Aplicacion
             return _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
         }
 
+        public static string DeterminarEstadoCuota(CuotaCliente cuotaCliente, DateTime? fechaReferencia = null)
+        {
+            if (cuotaCliente == null)
+            {
+                return EstadosCliente.SinCuota;
+            }
+
+            if (!cuotaCliente.FechaVencimiento.HasValue)
+            {
+                return EstadosCliente.Pendiente;
+            }
+
+            DateTime hoy = fechaReferencia ?? DateTime.Today;
+            return cuotaCliente.FechaVencimiento.Value >= hoy ? EstadosCliente.Activo : EstadosCliente.Vencido;
+        }
+
         public List<EstadoCliente> GetEstadoClientes()
         {
             List<EstadoCliente> estados = new List<EstadoCliente>();
-            DateTime hoy = DateTime.Today;
 
             foreach (Cliente cliente in _clienteRepositorio.GetAllClientes())
             {
@@ -155,7 +261,6 @@ namespace GymFlow.Aplicacion
                 estado.Cliente = cliente;
                 estado.CuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(cliente.Id);
                 estado.TieneCuota = estado.CuotaCliente != null;
-                estado.Vigente = estado.TieneCuota && estado.CuotaCliente.FechaVencimiento.HasValue && estado.CuotaCliente.FechaVencimiento.Value >= hoy;
 
                 estados.Add(estado);
             }
@@ -166,9 +271,10 @@ namespace GymFlow.Aplicacion
         private bool TieneDatosValidos(Cliente cliente)
         {
             return cliente != null
-                && cliente.Dni > 0
-                && !string.IsNullOrWhiteSpace(cliente.Nombre)
-                && !string.IsNullOrWhiteSpace(cliente.Apellido);
+                && ValidacionesDatos.EsDniValido(cliente.Dni)
+                && ValidacionesDatos.EsNombreValido(cliente.Nombre)
+                && ValidacionesDatos.EsNombreValido(cliente.Apellido)
+                && ValidacionesDatos.EsTelefonoValido(cliente.Telefono);
         }
     }
 }

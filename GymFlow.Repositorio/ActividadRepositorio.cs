@@ -21,19 +21,6 @@ namespace GymFlow.Repositorio
             return _contexto.Actividades.ToList();
         }
 
-        public bool UpdateCupo(int id, int cupoRestante)
-        {
-            Actividad actividad = _contexto.Actividades.FirstOrDefault(a => a.Id == id);
-
-            if (actividad == null)
-            {
-                return false;
-            }
-
-            actividad.CupoMaximo = cupoRestante;
-            return _contexto.SaveChanges() > 0;
-        }
-
         public bool AddActividad(Actividad actividad)
         {
             _contexto.Actividades.Add(actividad);

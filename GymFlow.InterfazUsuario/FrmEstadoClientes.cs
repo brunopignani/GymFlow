@@ -40,7 +40,9 @@ namespace GymFlow.InterfazUsuario
             this.cmbFiltro.DropDownStyle = ComboBoxStyle.DropDownList;
             this.cmbFiltro.Items.Add("Todos");
             this.cmbFiltro.Items.Add("Activos (cuota vigente)");
+            this.cmbFiltro.Items.Add("Pendientes (sin vencimiento)");
             this.cmbFiltro.Items.Add("Vencidos (cuota vencida)");
+            this.cmbFiltro.Items.Add("Sin cuota");
             this.cmbFiltro.SelectedIndex = 0;
             this.cmbFiltro.SelectedIndexChanged += new EventHandler(this.cmbFiltro_SelectedIndexChanged);
 
@@ -87,8 +89,10 @@ namespace GymFlow.InterfazUsuario
                 foreach (EstadoCliente estado in estados)
                 {
                     bool mostrar = filtro == 0
-                        || (filtro == 1 && estado.Vigente)
-                        || (filtro == 2 && estado.TieneCuota && !estado.Vigente);
+                        || (filtro == 1 && estado.Estado == EstadosCliente.Activo)
+                        || (filtro == 2 && estado.Estado == EstadosCliente.Pendiente)
+                        || (filtro == 3 && estado.Estado == EstadosCliente.Vencido)
+                        || (filtro == 4 && estado.Estado == EstadosCliente.SinCuota);
 
                     if (!mostrar)
                     {
@@ -116,12 +120,22 @@ namespace GymFlow.InterfazUsuario
 
         private string DescribirEstado(EstadoCliente estado)
         {
-            if (!estado.TieneCuota)
+            if (estado.Estado == EstadosCliente.Activo)
             {
-                return "Sin cuota";
+                return "Activo";
             }
 
-            return estado.Vigente ? "Activo" : "Vencido";
+            if (estado.Estado == EstadosCliente.Pendiente)
+            {
+                return "Pendiente";
+            }
+
+            if (estado.Estado == EstadosCliente.Vencido)
+            {
+                return "Vencido";
+            }
+
+            return "Sin cuota";
         }
 
         private void cmbFiltro_SelectedIndexChanged(object sender, EventArgs e)

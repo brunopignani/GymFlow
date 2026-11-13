@@ -6,7 +6,7 @@ namespace GymFlow.Dominio
     {
         public int Id { get; set; }
         public string Nombre { get; set; }
-        public int CupoMaximo { get; set; }
+        public int CapacidadMaxima { get; set; }
         public ICollection<Inscripcion> Inscripciones { get; set; }
     }
 }

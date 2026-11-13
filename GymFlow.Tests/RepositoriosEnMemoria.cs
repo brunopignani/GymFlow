@@ -33,6 +33,7 @@ namespace GymFlow.Tests
         public bool FallarAlGuardarInscripcion;
         public bool FallarAlGuardarPago;
         public bool FallarAlEliminarInscripcion;
+        public bool FallarAlEliminarCliente;
         public int CuentaQueFallaAlGuardarMovimiento;
 
         public static DatosEnMemoria CrearBase()
@@ -42,9 +43,9 @@ namespace GymFlow.Tests
             datos.Tipos.Add(new TipoMovimiento { Id = 1, Nombre = "DEBITO" });
             datos.Tipos.Add(new TipoMovimiento { Id = 2, Nombre = "CREDITO" });
             datos.Empleados.Add(new Empleado { Id = 10 });
-            datos.Actividades.Add(new Actividad { Id = 1, Nombre = "Yoga", CupoMaximo = 30 });
+            datos.Actividades.Add(new Actividad { Id = 1, Nombre = "Yoga", CapacidadMaxima = 30 });
             datos.Cuotas.Add(new Cuota { Id = 1, Nombre = "Mensual", Precio = 1000m });
-            datos.Clientes.Add(new Cliente { Id = 1, Dni = 111, Nombre = "Ana", Apellido = "Paz" });
+            datos.Clientes.Add(new Cliente { Id = 1, Dni = 10111222, Nombre = "Ana", Apellido = "Paz" });
             datos.Cuentas.Add(new CuentaCorriente { Id = 100, ClienteId = 1 });
             datos.CuotasCliente.Add(new CuotaCliente { Id = 5, ClienteId = 1, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(-3), Estado = "VENCIDO" });
 
@@ -85,6 +86,11 @@ namespace GymFlow.Tests
         {
             _datos.Cuentas.Add(cuentaCorriente);
             return true;
+        }
+
+        public bool DeleteCuentaCorriente(int id)
+        {
+            return _datos.Cuentas.RemoveAll(cc => cc.Id == id) > 0;
         }
     }
 
@@ -201,6 +207,11 @@ namespace GymFlow.Tests
             return true;
         }
 
+        public bool DeleteCuotaCliente(int id)
+        {
+            return _datos.CuotasCliente.RemoveAll(cc => cc.Id == id) > 0;
+        }
+
         public List<CuotaCliente> GetCuotasByCliente(int cliId)
         {
             return _datos.CuotasCliente.Where(cc => cc.ClienteId == cliId).ToList();
@@ -215,7 +226,7 @@ namespace GymFlow.Tests
         {
             return _datos.CuotasCliente
                 .Where(cc => cc.ClienteId == cliId)
-                .OrderByDescending(cc => cc.FechaVencimiento)
+                .OrderByDescending(cc => cc.Id)
                 .FirstOrDefault();
         }
 
@@ -361,6 +372,12 @@ namespace GymFlow.Tests
 
             _datos.Clientes.Remove(existente);
             _datos.Cuentas.RemoveAll(cc => cc.ClienteId == id);
+
+            if (_datos.FallarAlEliminarCliente)
+            {
+                throw new InvalidOperationException("Falla simulada al eliminar el cliente.");
+            }
+
             return true;
         }
     }
@@ -392,8 +409,12 @@ namespace GymFlow.Tests
         private List<Movimiento> _movimientos;
         private List<Inscripcion> _inscripciones;
         private List<Pago> _pagos;
+        private List<Cliente> _clientes;
+        private List<CuentaCorriente> _cuentas;
+        private List<CuotaCliente> _cuotasCliente;
         private Dictionary<int, DateTime?> _vencimientos;
-        private Dictionary<int, int> _cupos;
+        private Dictionary<int, string> _estados;
+        private Dictionary<int, int> _capacidades;
 
         public TransaccionEnMemoria(DatosEnMemoria datos)
         {
@@ -413,8 +434,12 @@ namespace GymFlow.Tests
             _movimientos = _datos.Movimientos.ToList();
             _inscripciones = _datos.Inscripciones.ToList();
             _pagos = _datos.Pagos.ToList();
+            _clientes = _datos.Clientes.ToList();
+            _cuentas = _datos.Cuentas.ToList();
+            _cuotasCliente = _datos.CuotasCliente.ToList();
             _vencimientos = _datos.CuotasCliente.ToDictionary(cc => cc.Id, cc => cc.FechaVencimiento);
-            _cupos = _datos.Actividades.ToDictionary(a => a.Id, a => a.CupoMaximo);
+            _estados = _datos.CuotasCliente.ToDictionary(cc => cc.Id, cc => cc.Estado);
+            _capacidades = _datos.Actividades.ToDictionary(a => a.Id, a => a.CapacidadMaxima);
         }
 
         public void ConfirmarTransaccion()
@@ -440,6 +465,12 @@ namespace GymFlow.Tests
             _datos.Inscripciones.AddRange(_inscripciones);
             _datos.Pagos.Clear();
             _datos.Pagos.AddRange(_pagos);
+            _datos.Clientes.Clear();
+            _datos.Clientes.AddRange(_clientes);
+            _datos.Cuentas.Clear();
+            _datos.Cuentas.AddRange(_cuentas);
+            _datos.CuotasCliente.Clear();
+            _datos.CuotasCliente.AddRange(_cuotasCliente);
 
             foreach (CuotaCliente cuotaCliente in _datos.CuotasCliente)
             {
@@ -447,13 +478,18 @@ namespace GymFlow.Tests
                 {
                     cuotaCliente.FechaVencimiento = _vencimientos[cuotaCliente.Id];
                 }
+
+                if (_estados.ContainsKey(cuotaCliente.Id))
+                {
+                    cuotaCliente.Estado = _estados[cuotaCliente.Id];
+                }
             }
 
             foreach (Actividad actividad in _datos.Actividades)
             {
-                if (_cupos.ContainsKey(actividad.Id))
+                if (_capacidades.ContainsKey(actividad.Id))
                 {
-                    actividad.CupoMaximo = _cupos[actividad.Id];
+                    actividad.CapacidadMaxima = _capacidades[actividad.Id];
                 }
             }
 
@@ -466,8 +502,12 @@ namespace GymFlow.Tests
             _movimientos = null;
             _inscripciones = null;
             _pagos = null;
+            _clientes = null;
+            _cuentas = null;
+            _cuotasCliente = null;
             _vencimientos = null;
-            _cupos = null;
+            _estados = null;
+            _capacidades = null;
         }
     }
 
@@ -483,19 +523,6 @@ namespace GymFlow.Tests
         public List<Actividad> GetAllActividades()
         {
             return _datos.Actividades.ToList();
-        }
-
-        public bool UpdateCupo(int id, int cupoRestante)
-        {
-            Actividad actividad = _datos.Actividades.FirstOrDefault(a => a.Id == id);
-
-            if (actividad == null)
-            {
-                return false;
-            }
-
-            actividad.CupoMaximo = cupoRestante;
-            return true;
         }
 
         public bool AddActividad(Actividad actividad)
@@ -515,7 +542,7 @@ namespace GymFlow.Tests
             }
 
             existente.Nombre = actividad.Nombre;
-            existente.CupoMaximo = actividad.CupoMaximo;
+            existente.CapacidadMaxima = actividad.CapacidadMaxima;
             return true;
         }
 

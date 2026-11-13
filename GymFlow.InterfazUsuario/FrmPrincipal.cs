@@ -24,31 +24,31 @@ namespace GymFlow.InterfazUsuario
             this.menuPrincipal = new MenuStrip();
             this.lblBienvenida = new Label();
 
-            ToolStripMenuItem menuClientes = new ToolStripMenuItem("Clientes");
-            menuClientes.DropDownItems.Add(CrearItem("Gestionar clientes", new EventHandler(this.itemClientes_Click)));
-            menuClientes.DropDownItems.Add(CrearItem("Estado de clientes", new EventHandler(this.itemEstadoClientes_Click)));
-            menuClientes.DropDownItems.Add(CrearItem("Autoingreso", new EventHandler(this.itemAutoingreso_Click)));
+            ToolStripMenuItem menuMostrador = new ToolStripMenuItem("Mostrador");
+            menuMostrador.DropDownItems.Add(CrearItem("Recepción (inscribir)", new EventHandler(this.itemRecepcion_Click)));
+            menuMostrador.DropDownItems.Add(CrearItem("Autoingreso", new EventHandler(this.itemAutoingreso_Click)));
 
-            ToolStripMenuItem menuActividades = new ToolStripMenuItem("Actividades");
-            menuActividades.DropDownItems.Add(CrearItem("Gestionar actividades", new EventHandler(this.itemActividades_Click)));
-            menuActividades.DropDownItems.Add(CrearItem("Recepción (inscribir)", new EventHandler(this.itemRecepcion_Click)));
-            menuActividades.DropDownItems.Add(CrearItem("Clientes por actividad", new EventHandler(this.itemClientesPorActividad_Click)));
-            menuActividades.DropDownItems.Add(CrearItem("Desinscribir cliente", new EventHandler(this.itemDesinscripcion_Click)));
-            menuActividades.DropDownItems.Add(CrearItem("Baja de inscripciones por morosidad", new EventHandler(this.itemBajaMorosos_Click)));
+            ToolStripMenuItem menuGestion = new ToolStripMenuItem("Gestión");
+            menuGestion.DropDownItems.Add(CrearItem("Gestionar clientes", new EventHandler(this.itemClientes_Click)));
+            menuGestion.DropDownItems.Add(CrearItem("Gestionar actividades", new EventHandler(this.itemActividades_Click)));
+
+            ToolStripMenuItem menuProcesosMasivos = new ToolStripMenuItem("Procesos masivos");
+            menuProcesosMasivos.DropDownItems.Add(CrearItem("Débito mensual", new EventHandler(this.itemDebitoMensual_Click)));
+            menuProcesosMasivos.DropDownItems.Add(CrearItem("Baja de inscripciones por morosidad", new EventHandler(this.itemBajaMorosos_Click)));
 
             ToolStripMenuItem menuFinanzas = new ToolStripMenuItem("Finanzas");
-            menuFinanzas.DropDownItems.Add(CrearItem("Cuenta corriente", new EventHandler(this.itemCuentaCorriente_Click)));
             menuFinanzas.DropDownItems.Add(CrearItem("Registrar cobro", new EventHandler(this.itemCobro_Click)));
-            menuFinanzas.DropDownItems.Add(CrearItem("Débito mensual", new EventHandler(this.itemDebitoMensual_Click)));
+            menuFinanzas.DropDownItems.Add(CrearItem("Cuenta corriente", new EventHandler(this.itemCuentaCorriente_Click)));
             menuFinanzas.DropDownItems.Add(CrearItem("Nota de crédito", new EventHandler(this.itemNotaCredito_Click)));
+            menuFinanzas.DropDownItems.Add(menuProcesosMasivos);
 
             ToolStripMenuItem menuSeguridad = new ToolStripMenuItem("Seguridad");
             menuSeguridad.DropDownItems.Add(CrearItem("Gestionar usuarios", new EventHandler(this.itemUsuarios_Click)));
             menuSeguridad.DropDownItems.Add(CrearItem("Cambiar contraseña", new EventHandler(this.itemCambiarClave_Click)));
             menuSeguridad.DropDownItems.Add(CrearItem("Cerrar sesión", new EventHandler(this.itemCerrarSesion_Click)));
 
-            this.menuPrincipal.Items.Add(menuClientes);
-            this.menuPrincipal.Items.Add(menuActividades);
+            this.menuPrincipal.Items.Add(menuMostrador);
+            this.menuPrincipal.Items.Add(menuGestion);
             this.menuPrincipal.Items.Add(menuFinanzas);
             this.menuPrincipal.Items.Add(menuSeguridad);
 

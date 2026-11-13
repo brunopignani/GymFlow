@@ -39,7 +39,9 @@ namespace GymFlow.Aplicacion
 
         public bool RegistrarUsuario(int dni, string nombre, string apellido, string telefono, string nombreUsuario, string clave)
         {
-            if (!TieneDatosPersonalesValidos(dni, nombre, apellido) || string.IsNullOrWhiteSpace(nombreUsuario) || string.IsNullOrEmpty(clave))
+            if (!TieneDatosPersonalesValidos(dni, nombre, apellido, telefono)
+                || !ValidacionesDatos.EsNombreUsuarioValido(nombreUsuario)
+                || string.IsNullOrEmpty(clave))
             {
                 return false;
             }
@@ -63,7 +65,7 @@ namespace GymFlow.Aplicacion
             empleado.Dni = dni;
             empleado.Nombre = nombre.Trim();
             empleado.Apellido = apellido.Trim();
-            empleado.Telefono = telefono;
+            empleado.Telefono = telefono.Trim();
             empleado.Usuario = usuario;
 
             return _empleadoRepositorio.AddEmpleado(empleado);
@@ -102,7 +104,8 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            if (!TieneDatosPersonalesValidos(dni, nombre, apellido) || string.IsNullOrWhiteSpace(nombreUsuario))
+            if (!TieneDatosPersonalesValidos(dni, nombre, apellido, telefono)
+                || !ValidacionesDatos.EsNombreUsuarioValido(nombreUsuario))
             {
                 return false;
             }
@@ -124,7 +127,7 @@ namespace GymFlow.Aplicacion
             empleado.Dni = dni;
             empleado.Nombre = nombre.Trim();
             empleado.Apellido = apellido.Trim();
-            empleado.Telefono = telefono;
+            empleado.Telefono = telefono.Trim();
             empleado.Usuario.Nombre = nombreUsuario.Trim();
 
             return _empleadoRepositorio.UpdateEmpleado(empleado);
@@ -144,9 +147,12 @@ namespace GymFlow.Aplicacion
             return _usuarioRepositorio.UpdateUsuario(empleado.Usuario);
         }
 
-        private bool TieneDatosPersonalesValidos(int dni, string nombre, string apellido)
+        private bool TieneDatosPersonalesValidos(int dni, string nombre, string apellido, string telefono)
         {
-            return dni > 0 && !string.IsNullOrWhiteSpace(nombre) && !string.IsNullOrWhiteSpace(apellido);
+            return ValidacionesDatos.EsDniValido(dni)
+                && ValidacionesDatos.EsNombreValido(nombre)
+                && ValidacionesDatos.EsNombreValido(apellido)
+                && ValidacionesDatos.EsTelefonoValido(telefono);
         }
     }
 }

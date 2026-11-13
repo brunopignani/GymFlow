@@ -54,8 +54,8 @@ namespace GymFlow.ContextoBD
 
             modelBuilder.Entity<Persona>()
                 .HasOne(p => p.Usuario)
-                .WithMany()
-                .HasForeignKey(p => p.UsuarioId)
+                .WithOne()
+                .HasForeignKey<Persona>(p => p.UsuarioId)
                 .IsRequired(false);
 
             modelBuilder.Entity<CuotaCliente>()

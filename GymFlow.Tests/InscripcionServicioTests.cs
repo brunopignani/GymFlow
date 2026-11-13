@@ -2,6 +2,7 @@ using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Data;
 using System.Linq;
 
 namespace GymFlow.Tests
@@ -35,7 +36,6 @@ namespace GymFlow.Tests
         private void Inscribir(DatosEnMemoria datos, int clienteId, int actividadId)
         {
             datos.Inscripciones.Add(new Inscripcion { Id = datos.Inscripciones.Count + 1, ClienteId = clienteId, ActividadId = actividadId, Fecha = DateTime.Today });
-            datos.Actividades.First(a => a.Id == actividadId).CupoMaximo--;
         }
 
         [TestMethod]
@@ -47,12 +47,12 @@ namespace GymFlow.Tests
             bool resultado = servicio.InscribirCliente(1, 1);
 
             Assert.IsFalse(resultado);
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(0, datos.Inscripciones.Count);
         }
 
         [TestMethod]
-        public void InscribirCliente_CuotaVigente_DescuentaCupoGuardaInscripcionYConfirma()
+        public void InscribirCliente_CuotaVigente_GuardaInscripcionYConfirmaTransaccionSerializable()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
             InscripcionServicio servicio = CrearServicio(datos);
@@ -60,12 +60,14 @@ namespace GymFlow.Tests
             bool resultado = servicio.InscribirCliente(1, 1);
 
             Assert.IsTrue(resultado);
-            Assert.AreEqual(29, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima); // Capacidad inmutable
+            Assert.AreEqual(1, datos.Inscripciones.Count);
             Inscripcion inscripcion = datos.Inscripciones.Single();
             Assert.AreEqual(1, inscripcion.ClienteId);
             Assert.AreEqual(1, inscripcion.ActividadId);
             Assert.AreEqual(DateTime.Today, inscripcion.Fecha);
             Assert.AreEqual(1, datos.Confirmadas);
+            Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
         }
 
         [TestMethod]
@@ -101,26 +103,29 @@ namespace GymFlow.Tests
         public void InscribirCliente_SinCupoDisponible_RetornaFalse()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
-            datos.Actividades[0].CupoMaximo = 0;
+            datos.Actividades[0].CapacidadMaxima = 2;
+            Inscribir(datos, 101, 1);
+            Inscribir(datos, 102, 1);
             InscripcionServicio servicio = CrearServicio(datos);
 
             Assert.IsFalse(servicio.InscribirCliente(1, 1));
-            Assert.AreEqual(0, datos.Inscripciones.Count);
+            Assert.AreEqual(2, datos.Inscripciones.Count);
         }
 
         [TestMethod]
-        public void InscribirCliente_UltimoCupo_LoPermiteYQuedaEnCero()
+        public void InscribirCliente_UltimoCupo_LoPermiteYCompletaCapacidad()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
-            datos.Actividades[0].CupoMaximo = 1;
+            datos.Actividades[0].CapacidadMaxima = 1;
             InscripcionServicio servicio = CrearServicio(datos);
 
             Assert.IsTrue(servicio.InscribirCliente(1, 1));
-            Assert.AreEqual(0, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(1, datos.Inscripciones.Count);
+            Assert.AreEqual(1, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
-        public void InscribirCliente_ClienteYaInscriptoEnLaActividad_RetornaFalseSinConsumirCupo()
+        public void InscribirCliente_ClienteYaInscriptoEnLaActividad_RetornaFalseSinDuplicar()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
             InscripcionServicio servicio = CrearServicio(datos);
@@ -130,11 +135,11 @@ namespace GymFlow.Tests
 
             Assert.IsFalse(segunda);
             Assert.AreEqual(1, datos.Inscripciones.Count);
-            Assert.AreEqual(29, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
-        public void InscribirCliente_FallaAlGuardarLaInscripcion_RevierteElCupoYRelanzaLaExcepcion()
+        public void InscribirCliente_FallaAlGuardarLaInscripcion_RevierteYRelanzaLaExcepcion()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
             datos.FallarAlGuardarInscripcion = true;
@@ -142,14 +147,14 @@ namespace GymFlow.Tests
 
             Assert.ThrowsException<InvalidOperationException>(() => servicio.InscribirCliente(1, 1));
 
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(0, datos.Inscripciones.Count);
             Assert.AreEqual(1, datos.Revertidas);
             Assert.AreEqual(0, datos.Confirmadas);
         }
 
         [TestMethod]
-        public void DesinscribirCliente_Inscripto_EliminaLaInscripcionYLiberaElCupo()
+        public void DesinscribirCliente_Inscripto_EliminaLaInscripcion()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
             Inscribir(datos, 1, 1);
@@ -159,18 +164,19 @@ namespace GymFlow.Tests
 
             Assert.IsTrue(resultado);
             Assert.AreEqual(0, datos.Inscripciones.Count);
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(1, datos.Confirmadas);
+            Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
         }
 
         [TestMethod]
-        public void DesinscribirCliente_SinInscripcion_RetornaFalseSinTocarElCupo()
+        public void DesinscribirCliente_SinInscripcion_RetornaFalse()
         {
             DatosEnMemoria datos = CrearConCuotaVigente();
             InscripcionServicio servicio = CrearServicio(datos);
 
             Assert.IsFalse(servicio.DesinscribirCliente(1, 1));
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
@@ -184,7 +190,7 @@ namespace GymFlow.Tests
             Assert.ThrowsException<InvalidOperationException>(() => servicio.DesinscribirCliente(1, 1));
 
             Assert.AreEqual(1, datos.Inscripciones.Count);
-            Assert.AreEqual(29, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(1, datos.Revertidas);
         }
 
@@ -202,10 +208,10 @@ namespace GymFlow.Tests
         }
 
         [TestMethod]
-        public void DarDeBajaInscripcionesDeMorosos_EliminaLasDeClientesConCuotaVencidaYLiberaCupos()
+        public void DarDeBajaInscripcionesDeMorosos_EliminaLasDeClientesConCuotaVencida()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.Actividades.Add(new Actividad { Id = 2, Nombre = "Spinning", CupoMaximo = 20 });
+            datos.Actividades.Add(new Actividad { Id = 2, Nombre = "Spinning", CapacidadMaxima = 20 });
             Inscribir(datos, 1, 1);
             Inscribir(datos, 1, 2);
             InscripcionServicio servicio = CrearServicio(datos);
@@ -216,8 +222,8 @@ namespace GymFlow.Tests
             Assert.AreEqual(2, resultado.InscripcionesEliminadas);
             Assert.AreEqual(0, resultado.NoProcesados.Count);
             Assert.AreEqual(0, datos.Inscripciones.Count);
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
-            Assert.AreEqual(20, datos.Actividades[1].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
+            Assert.AreEqual(20, datos.Actividades[1].CapacidadMaxima);
         }
 
         [TestMethod]
@@ -231,7 +237,7 @@ namespace GymFlow.Tests
 
             Assert.AreEqual(0, resultado.ClientesAfectados);
             Assert.AreEqual(1, datos.Inscripciones.Count);
-            Assert.AreEqual(29, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
@@ -259,7 +265,7 @@ namespace GymFlow.Tests
             ResultadoBajaMorosos segunda = servicio.DarDeBajaInscripcionesDeMorosos();
 
             Assert.AreEqual(0, segunda.ClientesAfectados);
-            Assert.AreEqual(30, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
         }
 
         [TestMethod]
@@ -277,7 +283,7 @@ namespace GymFlow.Tests
             Assert.AreEqual(0, resultado.ClientesAfectados);
             Assert.AreEqual(2, resultado.NoProcesados.Count);
             Assert.AreEqual(2, datos.Inscripciones.Count);
-            Assert.AreEqual(28, datos.Actividades[0].CupoMaximo);
+            Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(2, datos.Revertidas);
         }
     }

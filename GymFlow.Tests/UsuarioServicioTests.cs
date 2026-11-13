@@ -18,7 +18,7 @@ namespace GymFlow.Tests
         private UsuarioServicio CrearConRecepcionista(DatosEnMemoria datos)
         {
             UsuarioServicio servicio = CrearServicio(datos);
-            servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "555", "marta", "Clave123");
+            servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "5551234", "marta", "Clave123");
             return servicio;
         }
 
@@ -28,7 +28,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearServicio(datos);
 
-            bool resultado = servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "555", "marta", "Clave123");
+            bool resultado = servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "5551234", "marta", "Clave123");
 
             Assert.IsTrue(resultado);
             Empleado empleado = datos.Empleados.Single(e => e.Dni == 30111222);
@@ -42,11 +42,11 @@ namespace GymFlow.Tests
         }
 
         [TestMethod]
-        public void RegistrarUsuario_TelefonoVacio_EsValido()
+        public void RegistrarUsuario_TelefonoVacio_EsInvalido()
         {
             UsuarioServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsTrue(servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "", "marta", "Clave123"));
         }
 
         [TestMethod]
@@ -55,7 +55,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearConRecepcionista(datos);
 
-            Assert.IsFalse(servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "", "marta", "Otra1234"));
+            Assert.IsFalse(servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "5551234", "marta", "Otra1234"));
             Assert.AreEqual(1, datos.Usuarios.Count);
         }
 
@@ -65,7 +65,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearConRecepcionista(datos);
 
-            Assert.IsFalse(servicio.RegistrarUsuario(30111222, "Pedro", "Lopez", "", "pedro", "Otra1234"));
+            Assert.IsFalse(servicio.RegistrarUsuario(30111222, "Pedro", "Lopez", "5551234", "pedro", "Otra1234"));
         }
 
         [TestMethod]
@@ -74,12 +74,31 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.RegistrarUsuario(0, "Marta", "Gomez", "", "marta", "Clave123"));
-            Assert.IsFalse(servicio.RegistrarUsuario(1, "", "Gomez", "", "marta", "Clave123"));
-            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", " ", "", "marta", "Clave123"));
-            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", "Gomez", "", "", "Clave123"));
-            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", "Gomez", "", "marta", ""));
+            Assert.IsFalse(servicio.RegistrarUsuario(0, "Marta", "Gomez", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(1, "", "Gomez", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", " ", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", "Gomez", "5551234", "", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(1, "Marta", "Gomez", "5551234", "marta", ""));
             Assert.AreEqual(0, datos.Usuarios.Count);
+        }
+
+        [TestMethod]
+        public void RegistrarUsuario_DniFueraDeRango_NombreOUsuarioExcesivo_RetornaFalse()
+        {
+            UsuarioServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
+
+            Assert.IsFalse(servicio.RegistrarUsuario(999999, "Marta", "Gomez", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(100000000, "Marta", "Gomez", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(30111222, new string('A', ValidacionesDatos.LongitudMaximaNombre + 1), "Gomez", "5551234", "marta", "Clave123"));
+            Assert.IsFalse(servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "5551234", new string('u', ValidacionesDatos.LongitudMaximaUsuario + 1), "Clave123"));
+        }
+
+        [TestMethod]
+        public void RegistrarUsuario_TelefonoConFormatoInvalido_RetornaFalse()
+        {
+            UsuarioServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
+
+            Assert.IsFalse(servicio.RegistrarUsuario(30111222, "Marta", "Gomez", "12ABC", "marta", "Clave123"));
         }
 
         [TestMethod]
@@ -202,7 +221,7 @@ namespace GymFlow.Tests
             UsuarioServicio servicio = CrearConRecepcionista(datos);
             int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
 
-            bool resultado = servicio.ModificarUsuario(empleadoId, 30111222, "Marta Ines", "Gomez", "777", "marta.g");
+            bool resultado = servicio.ModificarUsuario(empleadoId, 30111222, "Marta Ines", "Gomez", "7771234", "marta.g");
 
             Assert.IsTrue(resultado);
             Assert.AreEqual("Marta Ines", datos.Empleados.Single(e => e.Id == empleadoId).Nombre);
@@ -214,7 +233,7 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearConRecepcionista(datos);
-            servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "", "pedro", "Clave123");
+            servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "5551234", "pedro", "Clave123");
             int pedroId = datos.Empleados.Single(e => e.Dni == 40111222).Id;
 
             Assert.IsFalse(servicio.ModificarUsuario(pedroId, 40111222, "Pedro", "Lopez", "", "marta"));
@@ -226,7 +245,7 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             UsuarioServicio servicio = CrearConRecepcionista(datos);
-            servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "", "pedro", "Clave123");
+            servicio.RegistrarUsuario(40111222, "Pedro", "Lopez", "5551234", "pedro", "Clave123");
             int pedroId = datos.Empleados.Single(e => e.Dni == 40111222).Id;
 
             Assert.IsFalse(servicio.ModificarUsuario(pedroId, 30111222, "Pedro", "Lopez", "", "pedro"));

@@ -2,6 +2,7 @@ using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 
@@ -38,23 +39,28 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            Actividad actividad = BuscarActividad(actividadId);
-
-            if (actividad == null || actividad.CupoMaximo <= 0)
-            {
-                return false;
-            }
-
-            if (BuscarInscripcion(clienteId, actividadId) != null)
-            {
-                return false;
-            }
-
             try
             {
-                _transaccion.IniciarTransaccion();
+                _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
 
-                if (!_actividadRepositorio.UpdateCupo(actividad.Id, actividad.CupoMaximo - 1))
+                Actividad actividad = BuscarActividad(actividadId);
+
+                if (actividad == null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (BuscarInscripcion(clienteId, actividadId) != null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                int inscriptos = _inscripcionRepositorio.GetInscripcionesByActividad(actividadId).Count;
+                int disponibles = actividad.CapacidadMaxima - inscriptos;
+
+                if (disponibles <= 0)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -83,19 +89,20 @@ namespace GymFlow.Aplicacion
 
         public bool DesinscribirCliente(int clienteId, int actividadId)
         {
-            Inscripcion inscripcion = BuscarInscripcion(clienteId, actividadId);
-            Actividad actividad = BuscarActividad(actividadId);
-
-            if (inscripcion == null || actividad == null)
-            {
-                return false;
-            }
-
             try
             {
-                _transaccion.IniciarTransaccion();
+                _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
 
-                if (!EliminarYLiberarCupo(inscripcion))
+                Inscripcion inscripcion = BuscarInscripcion(clienteId, actividadId);
+                Actividad actividad = BuscarActividad(actividadId);
+
+                if (inscripcion == null || actividad == null)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (!_inscripcionRepositorio.DeleteInscripcion(inscripcion.Id))
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -162,11 +169,11 @@ namespace GymFlow.Aplicacion
         {
             try
             {
-                _transaccion.IniciarTransaccion();
+                _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
 
                 foreach (Inscripcion inscripcion in inscripciones)
                 {
-                    if (!EliminarYLiberarCupo(inscripcion))
+                    if (!_inscripcionRepositorio.DeleteInscripcion(inscripcion.Id))
                     {
                         _transaccion.RevertirTransaccion();
                         return 0;
@@ -182,23 +189,6 @@ namespace GymFlow.Aplicacion
                 _transaccion.RevertirTransaccion();
                 return 0;
             }
-        }
-
-        private bool EliminarYLiberarCupo(Inscripcion inscripcion)
-        {
-            Actividad actividad = BuscarActividad(inscripcion.ActividadId);
-
-            if (actividad == null)
-            {
-                return false;
-            }
-
-            if (!_inscripcionRepositorio.DeleteInscripcion(inscripcion.Id))
-            {
-                return false;
-            }
-
-            return _actividadRepositorio.UpdateCupo(actividad.Id, actividad.CupoMaximo + 1);
         }
 
         private Actividad BuscarActividad(int actividadId)

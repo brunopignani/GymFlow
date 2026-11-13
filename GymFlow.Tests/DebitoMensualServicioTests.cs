@@ -86,7 +86,7 @@ namespace GymFlow.Tests
         public void EmitirDebitosMensuales_ClienteSinCuentaCorriente_LoInformaComoNoProcesado()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.Clientes.Add(new Cliente { Id = 2, Dni = 222, Nombre = "Luis", Apellido = "Sol" });
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
             datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today });
             DebitoMensualServicio servicio = CrearServicio(datos);
 

@@ -21,6 +21,19 @@ namespace GymFlow.Repositorio
             return _contexto.SaveChanges() > 0;
         }
 
+        public bool DeleteCuotaCliente(int id)
+        {
+            CuotaCliente cuotaCliente = _contexto.CuotasCliente.FirstOrDefault(cc => cc.Id == id);
+
+            if (cuotaCliente == null)
+            {
+                return false;
+            }
+
+            _contexto.CuotasCliente.Remove(cuotaCliente);
+            return _contexto.SaveChanges() > 0;
+        }
+
         public List<CuotaCliente> GetCuotasByCliente(int cliId)
         {
             return _contexto.CuotasCliente.Where(cc => cc.ClienteId == cliId).ToList();
@@ -43,7 +56,7 @@ namespace GymFlow.Repositorio
         {
             return _contexto.CuotasCliente
                 .Where(cc => cc.ClienteId == cliId)
-                .OrderByDescending(cc => cc.FechaVencimiento)
+                .OrderByDescending(cc => cc.Id)
                 .FirstOrDefault();
         }
 

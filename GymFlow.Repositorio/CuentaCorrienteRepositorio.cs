@@ -24,5 +24,18 @@ namespace GymFlow.Repositorio
             _contexto.CuentasCorriente.Add(cuentaCorriente);
             return _contexto.SaveChanges() > 0;
         }
+
+        public bool DeleteCuentaCorriente(int id)
+        {
+            CuentaCorriente cuentaCorriente = _contexto.CuentasCorriente.FirstOrDefault(cc => cc.Id == id);
+
+            if (cuentaCorriente == null)
+            {
+                return false;
+            }
+
+            _contexto.CuentasCorriente.Remove(cuentaCorriente);
+            return _contexto.SaveChanges() > 0;
+        }
     }
 }

@@ -2,6 +2,7 @@ using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Data;
 using System.Linq;
 
 namespace GymFlow.Tests
@@ -17,12 +18,15 @@ namespace GymFlow.Tests
                 new InscripcionRepositorioEnMemoria(datos),
                 new CuentaCorrienteRepositorioEnMemoria(datos),
                 new MovimientoRepositorioEnMemoria(datos),
-                new CuotaRepositorioEnMemoria(datos));
+                new CuotaRepositorioEnMemoria(datos),
+                new ComprobanteRepositorioEnMemoria(datos),
+                new PagoRepositorioEnMemoria(datos),
+                new TransaccionEnMemoria(datos));
         }
 
         private Cliente NuevoCliente(int dni)
         {
-            return new Cliente { Dni = dni, Nombre = "Luis", Apellido = "Sol", Telefono = "1234" };
+            return new Cliente { Dni = dni, Nombre = "Luis", Apellido = "Sol", Telefono = "1234567" };
         }
 
         [TestMethod]
@@ -31,10 +35,10 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
 
-            bool resultado = servicio.AddCliente(NuevoCliente(222));
+            bool resultado = servicio.AddCliente(NuevoCliente(20111222));
 
             Assert.IsTrue(resultado);
-            Cliente guardado = datos.Clientes.Single(c => c.Dni == 222);
+            Cliente guardado = datos.Clientes.Single(c => c.Dni == 20111222);
             Assert.IsTrue(datos.Cuentas.Any(cc => cc.ClienteId == guardado.Id));
             CuotaCliente cuotaCliente = datos.CuotasCliente.Single(cc => cc.ClienteId == guardado.Id);
             Assert.AreEqual(1, cuotaCliente.CuotaId);
@@ -48,7 +52,7 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
-            Cliente cliente = NuevoCliente(222);
+            Cliente cliente = NuevoCliente(20111222);
 
             Assert.IsTrue(servicio.AddCliente(cliente));
             Assert.IsFalse(servicio.AddCliente(cliente));
@@ -63,8 +67,8 @@ namespace GymFlow.Tests
             datos.Cuotas.Add(new Cuota { Id = 2, Nombre = "Anual", Precio = 10000m });
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.AddCliente(NuevoCliente(222)));
-            Assert.IsFalse(datos.Clientes.Any(c => c.Dni == 222));
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(20111222)));
+            Assert.IsFalse(datos.Clientes.Any(c => c.Dni == 20111222));
         }
 
         [TestMethod]
@@ -73,7 +77,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.AddCliente(NuevoCliente(111)));
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(10111222)));
             Assert.AreEqual(1, datos.Clientes.Count);
         }
 
@@ -92,9 +96,9 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
-            Cliente sinNombre = NuevoCliente(222);
+            Cliente sinNombre = NuevoCliente(20111222);
             sinNombre.Nombre = " ";
-            Cliente sinApellido = NuevoCliente(333);
+            Cliente sinApellido = NuevoCliente(30111222);
             sinApellido.Apellido = "";
 
             Assert.IsFalse(servicio.AddCliente(sinNombre));
@@ -110,15 +114,51 @@ namespace GymFlow.Tests
         }
 
         [TestMethod]
+        public void AddCliente_DniFueraDeRango_LongitudONombreExcesivo_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(999999)));
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(100000000)));
+
+            Cliente nombreLargo = NuevoCliente(20111222);
+            nombreLargo.Nombre = new string('A', ValidacionesDatos.LongitudMaximaNombre + 1);
+            Assert.IsFalse(servicio.AddCliente(nombreLargo));
+        }
+
+        [TestMethod]
+        public void AddCliente_TelefonoConFormatoInvalido_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            ClienteServicio servicio = CrearServicio(datos);
+            Cliente cliente = NuevoCliente(20111222);
+            cliente.Telefono = "12ABC";
+
+            Assert.IsFalse(servicio.AddCliente(cliente));
+        }
+
+        [TestMethod]
+        public void AddCliente_TelefonoVacio_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            ClienteServicio servicio = CrearServicio(datos);
+            Cliente cliente = NuevoCliente(20111222);
+            cliente.Telefono = " ";
+
+            Assert.IsFalse(servicio.AddCliente(cliente));
+        }
+
+        [TestMethod]
         public void UpdateCliente_DatosValidos_ActualizaElCliente()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
-            Cliente copia = new Cliente { Id = 1, Dni = 111, Nombre = "Ana María", Apellido = "Paz", Telefono = "999" };
+            Cliente copia = new Cliente { Id = 1, Dni = 10111222, Nombre = "Ana María", Apellido = "Paz", Telefono = "9999999" };
 
             Assert.IsTrue(servicio.UpdateCliente(copia));
             Assert.AreEqual("Ana María", datos.Clientes[0].Nombre);
-            Assert.AreEqual("999", datos.Clientes[0].Telefono);
+            Assert.AreEqual("9999999", datos.Clientes[0].Telefono);
         }
 
         [TestMethod]
@@ -126,8 +166,8 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
-            servicio.AddCliente(NuevoCliente(222));
-            Cliente copia = new Cliente { Id = datos.Clientes.Single(c => c.Dni == 222).Id, Dni = 111, Nombre = "Luis", Apellido = "Sol" };
+            servicio.AddCliente(NuevoCliente(20111222));
+            Cliente copia = new Cliente { Id = datos.Clientes.Single(c => c.Dni == 20111222).Id, Dni = 10111222, Nombre = "Luis", Apellido = "Sol" };
 
             Assert.IsFalse(servicio.UpdateCliente(copia));
         }
@@ -146,7 +186,7 @@ namespace GymFlow.Tests
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.UpdateCliente(new Cliente { Id = 1, Dni = 111, Nombre = "", Apellido = "Paz" }));
+            Assert.IsFalse(servicio.UpdateCliente(new Cliente { Id = 1, Dni = 10111222, Nombre = "", Apellido = "Paz" }));
             Assert.AreEqual("Ana", datos.Clientes[0].Nombre);
         }
 
@@ -155,13 +195,15 @@ namespace GymFlow.Tests
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
             ClienteServicio servicio = CrearServicio(datos);
-            servicio.AddCliente(NuevoCliente(222));
-            int id = datos.Clientes.Single(c => c.Dni == 222).Id;
-            datos.CuotasCliente.RemoveAll(cc => cc.ClienteId == id);
+            servicio.AddCliente(NuevoCliente(20111222));
+            int id = datos.Clientes.Single(c => c.Dni == 20111222).Id;
 
             Assert.IsTrue(servicio.DeleteCliente(id));
             Assert.IsFalse(datos.Clientes.Any(c => c.Id == id));
             Assert.IsFalse(datos.Cuentas.Any(cc => cc.ClienteId == id));
+            Assert.IsFalse(datos.CuotasCliente.Any(cc => cc.ClienteId == id));
+            Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
+            Assert.AreEqual(1, datos.Confirmadas);
         }
 
         [TestMethod]
@@ -175,10 +217,44 @@ namespace GymFlow.Tests
         }
 
         [TestMethod]
+        public void DeleteCliente_ConVariasCuotasPendientesIniciales_PermiteLaBaja()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 1, CuotaId = 1 });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.IsTrue(servicio.DeleteCliente(1));
+            Assert.IsFalse(datos.Clientes.Any(c => c.Id == 1));
+            Assert.IsFalse(datos.CuotasCliente.Any(cc => cc.ClienteId == 1));
+        }
+
+        [TestMethod]
+        public void DeleteCliente_ConCuotaVencida_RechazaLaBaja()
+        {
+            ClienteServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
+
+            Assert.AreEqual(ResultadoBajaCliente.CuotasNoIniciales, servicio.DeleteClienteConResultado(1));
+        }
+
+        [TestMethod]
+        public void DeleteCliente_ConCuotaActiva_RechazaLaBaja()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(1);
+            datos.CuotasCliente[0].Estado = "ACTIVO";
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.AreEqual(ResultadoBajaCliente.CuotasNoIniciales, servicio.DeleteClienteConResultado(1));
+        }
+
+        [TestMethod]
         public void DeleteCliente_ConInscripciones_RetornaFalse()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.CuotasCliente.Clear();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
             datos.Inscripciones.Add(new Inscripcion { Id = 1, ClienteId = 1, ActividadId = 1, Fecha = DateTime.Today });
             ClienteServicio servicio = CrearServicio(datos);
 
@@ -189,7 +265,8 @@ namespace GymFlow.Tests
         public void DeleteCliente_ConMovimientosEnLaCuenta_RetornaFalse()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.CuotasCliente.Clear();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
             datos.AgregarMovimiento(100, "DEBITO", 500m, new NotaVenta { Numero = "NV-1", FechaEmision = DateTime.Today, Total = 500m });
             ClienteServicio servicio = CrearServicio(datos);
 
@@ -198,11 +275,62 @@ namespace GymFlow.Tests
         }
 
         [TestMethod]
+        public void DeleteCliente_ConComprobanteFinanciero_RechazaLaBaja()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            datos.Comprobantes.Add(new NotaVenta { Id = 1, CuotaClienteId = 5, Numero = "NV-1", FechaEmision = DateTime.Today, Total = 1000m });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.AreEqual(ResultadoBajaCliente.Comprobantes, servicio.DeleteClienteConResultado(1));
+        }
+
+        [TestMethod]
+        public void DeleteCliente_ConPagoRegistrado_RechazaLaBaja()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            datos.Pagos.Add(new Pago { Id = 1, CuotaClienteId = 5, Monto = 1000m, Fecha = DateTime.Today });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.AreEqual(ResultadoBajaCliente.Pagos, servicio.DeleteClienteConResultado(1));
+        }
+
+        [TestMethod]
+        public void DeleteCliente_ConUsuarioAsociado_RechazaLaBaja()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.Clientes[0].UsuarioId = 7;
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.AreEqual(ResultadoBajaCliente.UsuarioAsociado, servicio.DeleteClienteConResultado(1));
+        }
+
+        [TestMethod]
+        public void DeleteCliente_FallaDuranteLaEliminacion_RevierteLosCambios()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            datos.FallarAlEliminarCliente = true;
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.ThrowsException<InvalidOperationException>(() => servicio.DeleteCliente(1));
+            Assert.IsTrue(datos.Clientes.Any(c => c.Id == 1));
+            Assert.IsTrue(datos.Cuentas.Any(cc => cc.ClienteId == 1));
+            Assert.IsTrue(datos.CuotasCliente.Any(cc => cc.ClienteId == 1));
+            Assert.AreEqual(1, datos.Revertidas);
+        }
+
+        [TestMethod]
         public void DeleteCliente_Inexistente_RetornaFalse()
         {
             ClienteServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
             Assert.IsFalse(servicio.DeleteCliente(99));
+            Assert.AreEqual(ResultadoBajaCliente.ClienteInexistente, servicio.DeleteClienteConResultado(99));
         }
 
         [TestMethod]
@@ -212,7 +340,7 @@ namespace GymFlow.Tests
             datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(1);
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.ValidarAutoingreso(111));
+            Assert.IsTrue(servicio.ValidarAutoingreso(10111222));
         }
 
         [TestMethod]
@@ -222,7 +350,7 @@ namespace GymFlow.Tests
             datos.CuotasCliente[0].FechaVencimiento = DateTime.Today;
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.ValidarAutoingreso(111));
+            Assert.IsTrue(servicio.ValidarAutoingreso(10111222));
         }
 
         [TestMethod]
@@ -230,7 +358,7 @@ namespace GymFlow.Tests
         {
             ClienteServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.ValidarAutoingreso(111));
+            Assert.IsFalse(servicio.ValidarAutoingreso(10111222));
         }
 
         [TestMethod]
@@ -248,28 +376,120 @@ namespace GymFlow.Tests
             datos.CuotasCliente.Clear();
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.ValidarAutoingreso(111));
+            Assert.IsFalse(servicio.ValidarAutoingreso(10111222));
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_ClienteSinCuotas_EsSinCuota()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente.Clear();
+            ClienteServicio servicio = CrearServicio(datos);
+
+            EstadoCliente estado = servicio.GetEstadoClientes().Single();
+
+            Assert.AreEqual(EstadosCliente.SinCuota, estado.Estado);
+            Assert.IsFalse(estado.Vigente);
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_CuotaPendienteSinVencimiento_EsPendiente()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            ClienteServicio servicio = CrearServicio(datos);
+
+            EstadoCliente estado = servicio.GetEstadoClientes().Single();
+
+            Assert.AreEqual(EstadosCliente.Pendiente, estado.Estado);
+            Assert.IsFalse(estado.Vigente);
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_CuotaQueVenceHoy_EsActivo()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = DateTime.Today;
+            ClienteServicio servicio = CrearServicio(datos);
+
+            EstadoCliente estado = servicio.GetEstadoClientes().Single();
+
+            Assert.AreEqual(EstadosCliente.Activo, estado.Estado);
+            Assert.IsTrue(estado.Vigente);
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_CuotaVencida_EsVencido()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(-1);
+            ClienteServicio servicio = CrearServicio(datos);
+
+            EstadoCliente estado = servicio.GetEstadoClientes().Single();
+
+            Assert.AreEqual(EstadosCliente.Vencido, estado.Estado);
+            Assert.IsFalse(estado.Vigente);
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_CuotaPendienteMasReciente_PriorizaLaUltimaAsignacion()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente.Add(new CuotaCliente
+            {
+                Id = 6,
+                ClienteId = 1,
+                CuotaId = 1,
+                FechaVencimiento = null
+            });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            EstadoCliente estado = servicio.GetEstadoClientes().Single();
+
+            Assert.AreEqual(6, estado.CuotaCliente.Id);
+            Assert.AreEqual(EstadosCliente.Pendiente, estado.Estado);
+        }
+
+        [TestMethod]
+        public void GetCuotaActivaByCliente_SeleccionaLaDeMayorIdAunqueSuFechaSeaMenor()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente.Add(new CuotaCliente
+            {
+                Id = 6,
+                ClienteId = 1,
+                CuotaId = 1,
+                FechaVencimiento = DateTime.Today.AddDays(-10)
+            });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            CuotaCliente cuota = servicio.GetCuotaActivaByCliente(1);
+
+            Assert.AreEqual(6, cuota.Id);
         }
 
         [TestMethod]
         public void GetEstadoClientes_ClasificaVigentesVencidosYSinCuota()
         {
             DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.Clientes.Add(new Cliente { Id = 2, Dni = 222, Nombre = "Luis", Apellido = "Sol" });
-            datos.Clientes.Add(new Cliente { Id = 3, Dni = 333, Nombre = "Eva", Apellido = "Rio" });
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
+            datos.Clientes.Add(new Cliente { Id = 3, Dni = 30111222, Nombre = "Eva", Apellido = "Rio" });
             datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(10) });
             ClienteServicio servicio = CrearServicio(datos);
 
             var estados = servicio.GetEstadoClientes();
 
-            EstadoCliente ana = estados.Single(e => e.Cliente.Dni == 111);
-            EstadoCliente luis = estados.Single(e => e.Cliente.Dni == 222);
-            EstadoCliente eva = estados.Single(e => e.Cliente.Dni == 333);
+            EstadoCliente ana = estados.Single(e => e.Cliente.Dni == 10111222);
+            EstadoCliente luis = estados.Single(e => e.Cliente.Dni == 20111222);
+            EstadoCliente eva = estados.Single(e => e.Cliente.Dni == 30111222);
             Assert.IsTrue(ana.TieneCuota);
+            Assert.AreEqual(EstadosCliente.Vencido, ana.Estado);
             Assert.IsFalse(ana.Vigente);
             Assert.IsTrue(luis.TieneCuota);
+            Assert.AreEqual(EstadosCliente.Activo, luis.Estado);
             Assert.IsTrue(luis.Vigente);
             Assert.IsFalse(eva.TieneCuota);
+            Assert.AreEqual(EstadosCliente.SinCuota, eva.Estado);
             Assert.IsFalse(eva.Vigente);
         }
     }

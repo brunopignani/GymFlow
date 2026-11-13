@@ -25,6 +25,7 @@ namespace GymFlow.InterfazUsuario
         private Label lblConfirmar;
         private TextBox txtConfirmar;
         private Button btnRegistrar;
+        private ErrorProvider errorProvider;
 
         public FrmRegistro(UsuarioServicio usuarioServicio)
         {
@@ -50,6 +51,7 @@ namespace GymFlow.InterfazUsuario
             this.lblConfirmar = new Label();
             this.txtConfirmar = new TextBox();
             this.btnRegistrar = new Button();
+            this.errorProvider = new ErrorProvider(this);
 
             AgregarFila(this.lblDni, this.txtDni, "DNI:", 20);
             AgregarFila(this.lblNombre, this.txtNombre, "Nombre:", 55);
@@ -91,10 +93,39 @@ namespace GymFlow.InterfazUsuario
         private void btnRegistrar_Click(object sender, EventArgs e)
         {
             int dni;
+            this.errorProvider.Clear();
 
-            if (!int.TryParse(this.txtDni.Text, out dni))
+            if (!ValidacionesDatos.TryParseDni(this.txtDni.Text, out dni))
             {
-                MessageBox.Show("Ingrese un DNI válido.", "Registro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                this.errorProvider.SetError(this.txtDni, "Ingrese solo 7 u 8 dígitos válidos.");
+            }
+
+            if (!ValidacionesDatos.EsNombreValido(this.txtNombre.Text))
+            {
+                this.errorProvider.SetError(this.txtNombre, "Ingrese un nombre obligatorio de hasta 100 caracteres.");
+            }
+
+            if (!ValidacionesDatos.EsNombreValido(this.txtApellido.Text))
+            {
+                this.errorProvider.SetError(this.txtApellido, "Ingrese un apellido obligatorio de hasta 100 caracteres.");
+            }
+
+            if (!ValidacionesDatos.EsTelefonoValido(this.txtTelefono.Text))
+            {
+                this.errorProvider.SetError(this.txtTelefono, "Ingrese un teléfono obligatorio y válido.");
+            }
+
+            if (!ValidacionesDatos.EsNombreUsuarioValido(this.txtUsuario.Text))
+            {
+                this.errorProvider.SetError(this.txtUsuario, "Ingrese un usuario obligatorio de hasta 50 caracteres.");
+            }
+
+            if (this.errorProvider.GetError(this.txtDni).Length > 0
+                || this.errorProvider.GetError(this.txtNombre).Length > 0
+                || this.errorProvider.GetError(this.txtApellido).Length > 0
+                || this.errorProvider.GetError(this.txtTelefono).Length > 0
+                || this.errorProvider.GetError(this.txtUsuario).Length > 0)
+            {
                 return;
             }
 

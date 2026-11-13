@@ -91,10 +91,11 @@ namespace GymFlow.InterfazUsuario
 
             this.lblMotivoTitulo.Location = new Point(20, 198);
             this.lblMotivoTitulo.Size = new Size(100, 20);
-            this.lblMotivoTitulo.Text = "Motivo:";
+            this.lblMotivoTitulo.Text = "Motivo descriptivo:";
 
             this.txtMotivo.Location = new Point(130, 195);
             this.txtMotivo.Size = new Size(330, 20);
+            this.txtMotivo.PlaceholderText = "Describa el motivo de la nota de crédito";
 
             this.btnEmitir.Location = new Point(20, 245);
             this.btnEmitir.Size = new Size(190, 32);
@@ -129,7 +130,7 @@ namespace GymFlow.InterfazUsuario
 
             int dni;
 
-            if (!int.TryParse(this.txtDni.Text, out dni))
+            if (!ValidacionesDatos.TryParseDni(this.txtDni.Text, out dni))
             {
                 MessageBox.Show("Ingrese un DNI válido.", "Nota de crédito", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;

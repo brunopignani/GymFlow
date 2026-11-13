@@ -69,6 +69,7 @@ namespace GymFlow.InterfazUsuario
             this.dgvMovimientos.Columns.Add("colFecha", "Fecha");
             this.dgvMovimientos.Columns.Add("colTipo", "Tipo");
             this.dgvMovimientos.Columns.Add("colComprobante", "Comprobante");
+            this.dgvMovimientos.Columns.Add("colMotivo", "Motivo");
             this.dgvMovimientos.Columns.Add("colImporte", "Importe");
             this.dgvMovimientos.Columns["colImporte"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
@@ -98,7 +99,7 @@ namespace GymFlow.InterfazUsuario
 
             int dni;
 
-            if (!int.TryParse(this.txtDni.Text, out dni))
+            if (!ValidacionesDatos.TryParseDni(this.txtDni.Text, out dni))
             {
                 MessageBox.Show("Ingrese un DNI válido.", "Cuenta corriente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -135,6 +136,7 @@ namespace GymFlow.InterfazUsuario
                         movimiento.Fecha.ToString("dd/MM/yyyy"),
                         movimiento.TipoMovimiento.Nombre,
                         DescribirComprobante(movimiento.Comprobante),
+                        DescribirMotivo(movimiento.Comprobante),
                         movimiento.Importe.ToString("N2"));
                 }
 
@@ -182,6 +184,18 @@ namespace GymFlow.InterfazUsuario
             }
 
             return tipo + " " + comprobante.Numero;
+        }
+
+        private string DescribirMotivo(Comprobante comprobante)
+        {
+            NotaCredito notaCredito = comprobante as NotaCredito;
+
+            if (notaCredito == null || string.IsNullOrEmpty(notaCredito.Motivo))
+            {
+                return "—";
+            }
+
+            return notaCredito.Motivo;
         }
     }
 }

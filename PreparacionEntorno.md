@@ -46,6 +46,20 @@ No ejecutar `database update` y el script para la misma base: ambos aplican la m
 
 Después, verificar que `CuotasCliente.FechaVencimiento` sea `DATETIME2 NULL`, que `T_NOTA_CREDITO.NotaVentaId` sea `INT NOT NULL`, y que exista la FK hacia `T_NOTA_VENTA(Id)` con acción `NO_ACTION`, el índice `IX_T_NOTA_CREDITO_NotaVentaId` y la entrada de migración en `__EFMigrationsHistory`.
 
+### Migración 04: CupoMaximo a CapacidadMaxima
+
+La migración EF `20261113130000_ActualizarCapacidadMaximaActividad` y `Scripts/04_MigracionCapacidadActividad.sql` son alternativas. No deben ejecutarse ambas sobre la misma base.
+
+El script manual registra `MigrationId = 20261113130000_ActualizarCapacidadMaximaActividad` y `ProductVersion = 8.0.10` en `dbo.__EFMigrationsHistory` únicamente después de renombrar y convertir correctamente la columna. Si la columna nueva ya existe y falta esa entrada, el script se detiene: no inserta el historial a ciegas porque no puede demostrar si los datos ya fueron convertidos. En ese caso, verificar con consultas SELECT la capacidad, las inscripciones y el historial; luego resolver el estado manualmente antes de ejecutar `Database.Migrate()`.
+
+Si la entrada existe pero la columna anterior todavía está presente, o si existen ambas columnas o ninguna, el script también se detiene. Si la columna nueva y la entrada ya existen, informa que la actualización está aplicada y no vuelve a sumar inscriptos. Después de una ejecución exitosa, una llamada posterior a `Database.Migrate()` no intenta aplicar esta migración porque el identificador ya figura en el historial.
+
+### Tarea 2: relación Persona-Usuario
+
+La migración EF `20261113160336_CorregirRelacionPersonaUsuario` y `Scripts/05_CorregirRelacionPersonaUsuario.sql` son alternativas. Ambas requieren que `Personas.UsuarioId` sea nullable y que no existan duplicados para valores no nulos.
+
+El script manual verifica el esquema, muestra los `UsuarioId` y `PersonaId` duplicados y se detiene sin cambios si encuentra alguno. Si crea el índice único filtrado correctamente, registra el `MigrationId` exacto y `ProductVersion = 8.0.10` en `dbo.__EFMigrationsHistory`. Si el índice único ya existe pero falta el historial, se detiene y exige revisión manual; no registra una migración a ciegas. Una ejecución posterior de `Database.Migrate()` solo considerará aplicada esta migración cuando la entrada del historial exista y coincida con el índice esperado.
+
 ## 4. Crear una base de pruebas y cargar datos
 
 La migración anterior no crea las tablas de una base vacía. Para una base nueva se necesita primero provisionar el esquema inicial completo correspondiente al modelo; ese baseline todavía no está versionado en el proyecto. No marcar esta migración como aplicada manualmente para sustituir esa provisión.

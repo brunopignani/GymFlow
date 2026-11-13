@@ -143,7 +143,7 @@ namespace GymFlow.Tests
         public void EmitirNotaCredito_NotaDeVentaDeOtraCuenta_RetornaFalse()
         {
             DatosEnMemoria datos = CrearConNotaVenta();
-            datos.Clientes.Add(new Cliente { Id = 2, Dni = 222, Nombre = "Luis", Apellido = "Sol" });
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
             datos.Cuentas.Add(new CuentaCorriente { Id = 200, ClienteId = 2 });
             NotaCreditoServicio servicio = CrearServicio(datos);
 

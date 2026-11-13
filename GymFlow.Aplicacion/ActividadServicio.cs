@@ -1,20 +1,27 @@
 using GymFlow.Abstracciones;
 using GymFlow.Dominio;
+using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace GymFlow.Aplicacion
 {
     public class ActividadServicio
     {
-        public const int CupoMaximoPermitido = 30;
+        public const int CapacidadMaximaPermitida = 30;
 
         private readonly IActividadRepositorio _actividadRepositorio;
         private readonly IInscripcionRepositorio _inscripcionRepositorio;
+        private readonly ITransaccionBD _transaccion;
 
-        public ActividadServicio(IActividadRepositorio actividadRepositorio, IInscripcionRepositorio inscripcionRepositorio)
+        public ActividadServicio(
+            IActividadRepositorio actividadRepositorio,
+            IInscripcionRepositorio inscripcionRepositorio,
+            ITransaccionBD transaccion)
         {
             _actividadRepositorio = actividadRepositorio;
             _inscripcionRepositorio = inscripcionRepositorio;
+            _transaccion = transaccion;
         }
 
         public List<Actividad> GetAllActividades()
@@ -29,7 +36,7 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            if (actividad.CupoMaximo < 1 || actividad.CupoMaximo > CupoMaximoPermitido)
+            if (actividad.CapacidadMaxima < 1 || actividad.CapacidadMaxima > CapacidadMaximaPermitida)
             {
                 return false;
             }
@@ -44,24 +51,43 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            if (actividad.CupoMaximo < 0 || actividad.CupoMaximo > CupoMaximoPermitido)
+            if (actividad.CapacidadMaxima < 1 || actividad.CapacidadMaxima > CapacidadMaximaPermitida)
             {
                 return false;
             }
 
-            if (!Existe(actividad.Id))
+            try
             {
-                return false;
+                _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
+
+                if (!Existe(actividad.Id))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                int inscriptos = _inscripcionRepositorio.GetInscripcionesByActividad(actividad.Id).Count;
+
+                if (actividad.CapacidadMaxima < inscriptos)
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                if (!_actividadRepositorio.UpdateActividad(actividad))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                _transaccion.ConfirmarTransaccion();
+                return true;
             }
-
-            int inscriptos = _inscripcionRepositorio.GetInscripcionesByActividad(actividad.Id).Count;
-
-            if (actividad.CupoMaximo + inscriptos > CupoMaximoPermitido)
+            catch (Exception)
             {
-                return false;
+                _transaccion.RevertirTransaccion();
+                throw;
             }
-
-            return _actividadRepositorio.UpdateActividad(actividad);
         }
 
         public bool DeleteActividad(int id)

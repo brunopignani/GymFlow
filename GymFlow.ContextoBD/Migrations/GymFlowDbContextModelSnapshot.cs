@@ -30,7 +30,7 @@ namespace GymFlow.ContextoBD.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CupoMaximo")
+                    b.Property<int>("CapacidadMaxima")
                         .HasColumnType("int");
 
                     b.Property<string>("Nombre")
@@ -250,7 +250,9 @@ namespace GymFlow.ContextoBD.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasFilter("[UsuarioId] IS NOT NULL");
 
                     b.ToTable("Personas", (string)null);
 
@@ -447,8 +449,8 @@ namespace GymFlow.ContextoBD.Migrations
             modelBuilder.Entity("GymFlow.Dominio.Persona", b =>
                 {
                     b.HasOne("GymFlow.Dominio.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId");
+                        .WithOne()
+                        .HasForeignKey("GymFlow.Dominio.Persona", "UsuarioId");
 
                     b.Navigation("Usuario");
                 });
