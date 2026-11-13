@@ -69,6 +69,7 @@ namespace GymFlow.InterfazUsuario
             this.dgvMovimientos.Columns.Add("colFecha", "Fecha");
             this.dgvMovimientos.Columns.Add("colTipo", "Tipo");
             this.dgvMovimientos.Columns.Add("colComprobante", "Comprobante");
+            this.dgvMovimientos.Columns.Add("colMedioPago", "Medio de pago");
             this.dgvMovimientos.Columns.Add("colMotivo", "Motivo");
             this.dgvMovimientos.Columns.Add("colImporte", "Importe");
             this.dgvMovimientos.Columns["colImporte"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -136,6 +137,7 @@ namespace GymFlow.InterfazUsuario
                         movimiento.Fecha.ToString("dd/MM/yyyy"),
                         movimiento.TipoMovimiento.Nombre,
                         DescribirComprobante(movimiento.Comprobante),
+                        DescribirMedioPago(movimiento.Comprobante),
                         DescribirMotivo(movimiento.Comprobante),
                         movimiento.Importe.ToString("N2"));
                 }
@@ -196,6 +198,18 @@ namespace GymFlow.InterfazUsuario
             }
 
             return notaCredito.Motivo;
+        }
+
+        private string DescribirMedioPago(Comprobante comprobante)
+        {
+            ReciboPago recibo = comprobante as ReciboPago;
+
+            if (recibo == null || string.IsNullOrWhiteSpace(recibo.MetodoPago))
+            {
+                return "—";
+            }
+
+            return recibo.MetodoPago;
         }
     }
 }

@@ -25,7 +25,7 @@ namespace GymFlow.InterfazUsuario
             this.lblBienvenida = new Label();
 
             ToolStripMenuItem menuMostrador = new ToolStripMenuItem("Mostrador");
-            menuMostrador.DropDownItems.Add(CrearItem("Recepción (inscribir)", new EventHandler(this.itemRecepcion_Click)));
+            menuMostrador.DropDownItems.Add(CrearItem("Inscribir a actividad", new EventHandler(this.itemRecepcion_Click)));
             menuMostrador.DropDownItems.Add(CrearItem("Autoingreso", new EventHandler(this.itemAutoingreso_Click)));
 
             ToolStripMenuItem menuGestion = new ToolStripMenuItem("Gestión");

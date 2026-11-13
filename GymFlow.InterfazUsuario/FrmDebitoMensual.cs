@@ -14,8 +14,8 @@ namespace GymFlow.InterfazUsuario
         private Label lblDescripcion;
         private Button btnEmitir;
         private Label lblResumen;
-        private Label lblNoProcesadosTitulo;
-        private ListBox lstNoProcesados;
+        private Label lblDetalleTitulo;
+        private DataGridView dgvDetalle;
 
         public FrmDebitoMensual(DebitoMensualServicio debitoMensualServicio)
         {
@@ -30,8 +30,8 @@ namespace GymFlow.InterfazUsuario
             this.lblDescripcion = new Label();
             this.btnEmitir = new Button();
             this.lblResumen = new Label();
-            this.lblNoProcesadosTitulo = new Label();
-            this.lstNoProcesados = new ListBox();
+            this.lblDetalleTitulo = new Label();
+            this.dgvDetalle = new DataGridView();
 
             this.lblPeriodo.Location = new Point(20, 20);
             this.lblPeriodo.Size = new Size(460, 20);
@@ -51,15 +51,24 @@ namespace GymFlow.InterfazUsuario
             this.lblResumen.Size = new Size(460, 20);
             this.lblResumen.Text = string.Empty;
 
-            this.lblNoProcesadosTitulo.Location = new Point(20, 190);
-            this.lblNoProcesadosTitulo.Size = new Size(460, 20);
-            this.lblNoProcesadosTitulo.Text = string.Empty;
+            this.lblDetalleTitulo.Location = new Point(20, 190);
+            this.lblDetalleTitulo.Size = new Size(700, 20);
+            this.lblDetalleTitulo.Text = string.Empty;
 
-            this.lstNoProcesados.Location = new Point(20, 215);
-            this.lstNoProcesados.Size = new Size(460, 150);
+            this.dgvDetalle.Location = new Point(20, 215);
+            this.dgvDetalle.Size = new Size(760, 230);
+            this.dgvDetalle.ReadOnly = true;
+            this.dgvDetalle.AllowUserToAddRows = false;
+            this.dgvDetalle.RowHeadersVisible = false;
+            this.dgvDetalle.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvDetalle.Columns.Add("colNombre", "Cliente");
+            this.dgvDetalle.Columns.Add("colDni", "DNI");
+            this.dgvDetalle.Columns.Add("colResultado", "Resultado");
+            this.dgvDetalle.Columns.Add("colComprobante", "Comprobante");
+            this.dgvDetalle.Columns.Add("colMotivo", "Motivo");
 
             this.Text = "Débito mensual";
-            this.Size = new Size(520, 430);
+            this.Size = new Size(820, 510);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -68,8 +77,8 @@ namespace GymFlow.InterfazUsuario
             this.Controls.Add(this.lblDescripcion);
             this.Controls.Add(this.btnEmitir);
             this.Controls.Add(this.lblResumen);
-            this.Controls.Add(this.lblNoProcesadosTitulo);
-            this.Controls.Add(this.lstNoProcesados);
+            this.Controls.Add(this.lblDetalleTitulo);
+            this.Controls.Add(this.dgvDetalle);
         }
 
         private void btnEmitir_Click(object sender, EventArgs e)
@@ -83,9 +92,9 @@ namespace GymFlow.InterfazUsuario
 
             this.btnEmitir.Enabled = false;
             this.Cursor = Cursors.WaitCursor;
-            this.lstNoProcesados.Items.Clear();
+            this.dgvDetalle.Rows.Clear();
             this.lblResumen.Text = string.Empty;
-            this.lblNoProcesadosTitulo.Text = string.Empty;
+            this.lblDetalleTitulo.Text = string.Empty;
 
             bool habilitarBoton = true;
 
@@ -97,19 +106,19 @@ namespace GymFlow.InterfazUsuario
                     + "  |  Ya emitidos en el período: " + resultado.YaEmitidos
                     + "  |  No procesados: " + resultado.NoProcesados.Count;
 
-                if (resultado.NoProcesados.Count > 0)
+                foreach (DetalleDebitoMensual detalle in resultado.Detalles)
                 {
-                    this.lblNoProcesadosTitulo.Text = "Operaciones no procesadas:";
+                    this.dgvDetalle.Rows.Add(
+                        detalle.Nombre,
+                        detalle.Dni,
+                        detalle.Resultado,
+                        string.IsNullOrWhiteSpace(detalle.NumeroComprobante) ? "—" : detalle.NumeroComprobante,
+                        string.IsNullOrWhiteSpace(detalle.Motivo) ? "—" : detalle.Motivo);
+                }
 
-                    foreach (string mensaje in resultado.NoProcesados)
-                    {
-                        this.lstNoProcesados.Items.Add(mensaje);
-                    }
-                }
-                else
-                {
-                    habilitarBoton = false;
-                }
+                this.lblDetalleTitulo.Text = resultado.Detalles.Count == 0
+                    ? "Sin clientes para procesar."
+                    : "Detalle de clientes procesados:";
             }
             catch (Exception ex)
             {

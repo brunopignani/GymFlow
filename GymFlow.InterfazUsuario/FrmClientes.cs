@@ -170,9 +170,11 @@ namespace GymFlow.InterfazUsuario
 
             string filtro = this.cmbFiltro.SelectedItem as string;
 
-            List<EstadoCliente> mostrar = filtro == "Todos"
+            List<EstadoCliente> mostrar = (filtro == "Todos"
                 ? _estadosClientes
-                : _estadosClientes.Where(e => e.Estado == filtro).ToList();
+                : _estadosClientes.Where(e => e.Estado == filtro).ToList())
+                .OrderByDescending(e => e.Cliente.Id)
+                .ToList();
 
             foreach (EstadoCliente estado in mostrar)
             {
@@ -217,9 +219,11 @@ namespace GymFlow.InterfazUsuario
             int indice = this.dgvClientes.CurrentRow.Index;
             string filtro = this.cmbFiltro.SelectedItem as string;
 
-            List<EstadoCliente> mostrar = filtro == "Todos"
+            List<EstadoCliente> mostrar = (filtro == "Todos"
                 ? _estadosClientes
-                : _estadosClientes.Where(e => e.Estado == filtro).ToList();
+                : _estadosClientes.Where(e => e.Estado == filtro).ToList())
+                .OrderByDescending(e => e.Cliente.Id)
+                .ToList();
 
             if (indice < 0 || indice >= mostrar.Count)
             {

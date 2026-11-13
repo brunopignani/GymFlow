@@ -40,6 +40,10 @@ namespace GymFlow.Tests
             Assert.AreEqual(1, resultado.Emitidos);
             Assert.AreEqual(0, resultado.YaEmitidos);
             Assert.AreEqual(0, resultado.NoProcesados.Count);
+            Assert.AreEqual(1, resultado.Detalles.Count);
+            Assert.AreEqual("Emitido", resultado.Detalles[0].Resultado);
+            Assert.AreEqual("NV-00000001", resultado.Detalles[0].NumeroComprobante);
+            Assert.AreEqual(10111222, resultado.Detalles[0].Dni);
 
             NotaVenta notaVenta = datos.Comprobantes.OfType<NotaVenta>().Single();
             Assert.AreEqual(1000m, notaVenta.Total);
@@ -67,6 +71,9 @@ namespace GymFlow.Tests
             Assert.AreEqual(1, segunda.YaEmitidos);
             Assert.AreEqual(1, datos.Comprobantes.OfType<NotaVenta>().Count());
             Assert.AreEqual(1, datos.Movimientos.Count);
+            Assert.AreEqual(1, segunda.Detalles.Count);
+            Assert.AreEqual("Ya emitido", segunda.Detalles[0].Resultado);
+            Assert.AreEqual("NV-00000001", segunda.Detalles[0].NumeroComprobante);
         }
 
         [TestMethod]
@@ -95,6 +102,10 @@ namespace GymFlow.Tests
             Assert.AreEqual(1, resultado.Emitidos);
             Assert.AreEqual(1, resultado.NoProcesados.Count);
             Assert.IsTrue(resultado.NoProcesados[0].Contains("Sol Luis"));
+            Assert.AreEqual(2, resultado.Detalles.Count);
+            Assert.AreEqual(1, resultado.Detalles.Count(d => d.Resultado == "Emitido"));
+            Assert.AreEqual(1, resultado.Detalles.Count(d => d.Resultado == "No procesado"));
+            Assert.AreEqual("No tiene cuenta corriente.", resultado.Detalles.Single(d => d.Resultado == "No procesado").Motivo);
         }
 
         [TestMethod]
@@ -108,6 +119,9 @@ namespace GymFlow.Tests
 
             Assert.AreEqual(0, resultado.Emitidos);
             Assert.AreEqual(1, resultado.NoProcesados.Count);
+            Assert.AreEqual(1, resultado.Detalles.Count);
+            Assert.AreEqual("No procesado", resultado.Detalles[0].Resultado);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(resultado.Detalles[0].Motivo));
         }
 
         [TestMethod]

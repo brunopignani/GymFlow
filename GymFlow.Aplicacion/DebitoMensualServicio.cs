@@ -41,28 +41,30 @@ namespace GymFlow.Aplicacion
         public ResultadoDebitoMensual EmitirDebitosMensuales()
         {
             ResultadoDebitoMensual resultado = new ResultadoDebitoMensual();
+            List<Cliente> clientes = _clienteRepositorio.GetAllClientes();
 
             TipoMovimiento tipoDebito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
                 .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Debito);
 
             if (tipoDebito == null)
             {
-                resultado.NoProcesados.Add("No existe el tipo de movimiento " + NombresTipoMovimiento.Debito + ".");
+                foreach (Cliente clienteSinTipo in clientes)
+                {
+                    AgregarNoProcesado(resultado, clienteSinTipo, "No existe el tipo de movimiento " + NombresTipoMovimiento.Debito + ".");
+                }
+
                 return resultado;
             }
 
             DateTime hoy = DateTime.Today;
-            List<Cliente> clientes = _clienteRepositorio.GetAllClientes();
 
             foreach (Cliente cliente in clientes)
             {
-                string nombreCliente = cliente.Apellido + " " + cliente.Nombre + " (DNI " + cliente.Dni + ")";
-
                 CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(cliente.Id);
 
                 if (cuenta == null)
                 {
-                    resultado.NoProcesados.Add(nombreCliente + ": no tiene cuenta corriente.");
+                    AgregarNoProcesado(resultado, cliente, "No tiene cuenta corriente.");
                     continue;
                 }
 
@@ -70,7 +72,7 @@ namespace GymFlow.Aplicacion
 
                 if (cuotaCliente == null)
                 {
-                    resultado.NoProcesados.Add(nombreCliente + ": no tiene cuota asignada.");
+                    AgregarNoProcesado(resultado, cliente, "No tiene cuota asignada.");
                     continue;
                 }
 
@@ -78,23 +80,39 @@ namespace GymFlow.Aplicacion
 
                 if (cuota == null || cuota.Precio <= 0)
                 {
-                    resultado.NoProcesados.Add(nombreCliente + ": la cuota no tiene un precio válido.");
+                    AgregarNoProcesado(resultado, cliente, "La cuota no tiene un precio válido.");
                     continue;
                 }
 
-                if (TieneDebitoDelPeriodo(cuenta.Id, cuotaCliente.Id, hoy))
+                NotaVenta notaVentaExistente = ObtenerNotaVentaDelPeriodo(cuenta.Id, cuotaCliente.Id, hoy);
+                if (notaVentaExistente != null)
                 {
                     resultado.YaEmitidos = resultado.YaEmitidos + 1;
+                    resultado.Detalles.Add(new DetalleDebitoMensual
+                    {
+                        Nombre = cliente.Apellido + " " + cliente.Nombre,
+                        Dni = cliente.Dni,
+                        Resultado = "Ya emitido",
+                        NumeroComprobante = notaVentaExistente.Numero
+                    });
                     continue;
                 }
 
                 if (EmitirDebito(cuenta, cuotaCliente, cuota, tipoDebito, hoy))
                 {
                     resultado.Emitidos = resultado.Emitidos + 1;
+                    NotaVenta notaVentaEmitida = ObtenerNotaVentaDelPeriodo(cuenta.Id, cuotaCliente.Id, hoy);
+                    resultado.Detalles.Add(new DetalleDebitoMensual
+                    {
+                        Nombre = cliente.Apellido + " " + cliente.Nombre,
+                        Dni = cliente.Dni,
+                        Resultado = "Emitido",
+                        NumeroComprobante = notaVentaEmitida == null ? null : notaVentaEmitida.Numero
+                    });
                 }
                 else
                 {
-                    resultado.NoProcesados.Add(nombreCliente + ": no se pudo guardar el débito.");
+                    AgregarNoProcesado(resultado, cliente, "No se pudo guardar el débito.");
                 }
             }
 
@@ -102,6 +120,11 @@ namespace GymFlow.Aplicacion
         }
 
         private bool TieneDebitoDelPeriodo(int cuentaId, int? cuotaClienteId, DateTime fecha)
+        {
+            return ObtenerNotaVentaDelPeriodo(cuentaId, cuotaClienteId, fecha) != null;
+        }
+
+        private NotaVenta ObtenerNotaVentaDelPeriodo(int cuentaId, int? cuotaClienteId, DateTime fecha)
         {
             List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuentaId);
 
@@ -112,11 +135,24 @@ namespace GymFlow.Aplicacion
                     && movimiento.Comprobante.FechaEmision.Year == fecha.Year
                     && movimiento.Comprobante.FechaEmision.Month == fecha.Month)
                 {
-                    return true;
+                    return (NotaVenta)movimiento.Comprobante;
                 }
             }
 
-            return false;
+            return null;
+        }
+
+        private void AgregarNoProcesado(ResultadoDebitoMensual resultado, Cliente cliente, string motivo)
+        {
+            string nombre = cliente.Apellido + " " + cliente.Nombre;
+            resultado.NoProcesados.Add(nombre + " (DNI " + cliente.Dni + "): " + motivo);
+            resultado.Detalles.Add(new DetalleDebitoMensual
+            {
+                Nombre = nombre,
+                Dni = cliente.Dni,
+                Resultado = "No procesado",
+                Motivo = motivo
+            });
         }
 
         private bool EmitirDebito(CuentaCorriente cuenta, CuotaCliente cuotaCliente, Cuota cuota, TipoMovimiento tipoDebito, DateTime fecha)

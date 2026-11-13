@@ -4,16 +4,21 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using System.ComponentModel;
+using System.Globalization;
 
 namespace GymFlow.InterfazUsuario
 {
     public class FrmCobro : Form
     {
+        private static readonly CultureInfo CulturaMonetaria = CultureInfo.GetCultureInfo("es-AR");
+
         private readonly ClienteServicio _clienteServicio;
         private readonly CobroServicio _cobroServicio;
         private readonly CuentaCorrienteServicio _cuentaCorrienteServicio;
 
         private Cliente _clienteCargado;
+        private ResumenCobro _resumenCobroActual;
 
         private Label lblDni;
         private TextBox txtDni;
@@ -91,6 +96,8 @@ namespace GymFlow.InterfazUsuario
 
             this.txtImporte.Location = new Point(150, 187);
             this.txtImporte.Size = new Size(150, 20);
+            this.txtImporte.Validating += new CancelEventHandler(this.txtImporte_Validating);
+            this.txtImporte.TextChanged += new EventHandler(this.txtImporte_TextChanged);
 
             this.lblMetodoPagoTitulo.Location = new Point(20, 225);
             this.lblMetodoPagoTitulo.Size = new Size(120, 20);
@@ -196,21 +203,31 @@ namespace GymFlow.InterfazUsuario
 
         private void MostrarResumenCobro()
         {
+            this.errorProvider.Clear();
             ResumenCobro resumen = _cobroServicio.ObtenerResumenCobro(_clienteCargado.Id);
 
             if (resumen == null)
             {
+                this._resumenCobroActual = null;
                 this.lblSaldo.Text = "Saldo: no disponible";
                 this.lblPrecioCuota.Text = "Precio de cuota: no disponible";
                 this.lblMinimo.Text = "Mínimo exigible: no disponible";
                 this.btnRegistrar.Enabled = false;
+                this.txtImporte.Enabled = false;
+                this.txtImporte.Text = string.Empty;
                 return;
             }
 
-            this.lblSaldo.Text = "Saldo: " + resumen.Saldo.ToString("N2");
-            this.lblPrecioCuota.Text = "Precio de cuota: " + resumen.PrecioCuota.ToString("N2");
-            this.lblMinimo.Text = "Mínimo exigible: " + resumen.MinimoExigible.ToString("N2");
+            this._resumenCobroActual = resumen;
+            this.lblSaldo.Text = "Saldo: " + resumen.Saldo.ToString("C2", CulturaMonetaria);
+            this.lblPrecioCuota.Text = "Precio de cuota: " + resumen.PrecioCuota.ToString("C2", CulturaMonetaria);
+            this.lblMinimo.Text = "Mínimo exigible: " + resumen.MinimoExigible.ToString("C2", CulturaMonetaria);
             this.btnRegistrar.Enabled = resumen.MinimoExigible > 0m;
+            this.txtImporte.Enabled = resumen.MinimoExigible > 0m;
+            this.txtImporte.Text = resumen.MinimoExigible > 0m
+                ? resumen.MinimoExigible.ToString("C2", CulturaMonetaria)
+                : string.Empty;
+            this.txtImporte.SelectAll();
             this.btnAplicarSaldo.Enabled = resumen.TieneNotaVentaDelPeriodo
                 ? resumen.Saldo <= 0
                 : resumen.Saldo <= -resumen.PrecioCuota;
@@ -228,14 +245,30 @@ namespace GymFlow.InterfazUsuario
 
             try
             {
+                ResumenCobro resumen = _resumenCobroActual;
+
+                if (resumen == null)
+                {
+                    MessageBox.Show("No hay información financiera disponible para aplicar el saldo a favor.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string detalle = DescribirAplicacionSaldo(resumen);
+                if (MessageBox.Show(
+                    detalle + Environment.NewLine + Environment.NewLine + "¿Confirma la operación?",
+                    "Aplicar saldo a favor", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                {
+                    return;
+                }
+
                 if (!_cobroServicio.AplicarSaldoAFavor(_clienteCargado.Id))
                 {
-                    MessageBox.Show("El saldo a favor no cubre la cuota o la cuota ya está vigente.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(DescribirRechazoAplicacionSaldo(resumen), "Aplicar saldo a favor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     MostrarResumenCobro();
                     return;
                 }
 
-                MessageBox.Show("Saldo a favor aplicado. La cuota quedó activa durante 30 días.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Saldo a favor aplicado. La cuota quedó activa durante 30 días.", "Aplicar saldo a favor", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 MostrarResumenCobro();
                 this.btnRegistrar.Enabled = false;
             }
@@ -248,6 +281,12 @@ namespace GymFlow.InterfazUsuario
             finally
             {
                 this.Cursor = Cursors.Default;
+                if (this._resumenCobroActual != null)
+                {
+                    this.btnAplicarSaldo.Enabled = this._resumenCobroActual.TieneNotaVentaDelPeriodo
+                        ? this._resumenCobroActual.Saldo <= 0
+                        : this._resumenCobroActual.Saldo <= -this._resumenCobroActual.PrecioCuota;
+                }
             }
         }
 
@@ -261,9 +300,16 @@ namespace GymFlow.InterfazUsuario
             decimal importe;
             this.errorProvider.Clear();
 
-            if (!decimal.TryParse(this.txtImporte.Text, out importe) || importe <= 0)
+            if (!TryParseImporte(this.txtImporte.Text, out importe) || importe <= 0)
             {
                 this.errorProvider.SetError(this.txtImporte, "Ingrese un importe numérico mayor a cero.");
+                this.txtImporte.Focus();
+                return;
+            }
+
+            if (this._resumenCobroActual != null && importe < this._resumenCobroActual.MinimoExigible)
+            {
+                this.errorProvider.SetError(this.txtImporte, "El importe no puede ser inferior al mínimo exigible de " + this._resumenCobroActual.MinimoExigible.ToString("C2", CulturaMonetaria) + ".");
                 this.txtImporte.Focus();
                 return;
             }
@@ -277,7 +323,11 @@ namespace GymFlow.InterfazUsuario
                 return;
             }
 
-            string pregunta = "¿Registrar el cobro de " + importe.ToString("N2") + " a " + this.lblCliente.Text + " (" + metodoPago + ")?";
+            string pregunta = "Importe a cobrar: " + importe.ToString("C2", CulturaMonetaria) + Environment.NewLine
+                + "Mínimo exigible: " + this._resumenCobroActual.MinimoExigible.ToString("C2", CulturaMonetaria) + Environment.NewLine
+                + "Cliente: " + this.lblCliente.Text + Environment.NewLine
+                + "Medio de pago: " + metodoPago + Environment.NewLine + Environment.NewLine
+                + "¿Registrar el cobro?";
 
             if (MessageBox.Show(pregunta, "Registrar cobro", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             {
@@ -316,7 +366,8 @@ namespace GymFlow.InterfazUsuario
             finally
             {
                 this.Cursor = Cursors.Default;
-                this.btnRegistrar.Enabled = true;
+                ActualizarEstadoImporte();
+                this.txtImporte.Enabled = this.btnRegistrar.Enabled;
             }
         }
 
@@ -342,7 +393,7 @@ namespace GymFlow.InterfazUsuario
             string detalle = "Cobro registrado correctamente." + Environment.NewLine
                 + "Recibo: " + recibo.Numero + Environment.NewLine
                 + "Fecha: " + recibo.FechaEmision.ToString("dd/MM/yyyy") + Environment.NewLine
-                + "Importe: " + recibo.Total.ToString("N2") + Environment.NewLine
+                + "Importe: " + recibo.Total.ToString("C2", CulturaMonetaria) + Environment.NewLine
                 + "Método de pago: " + recibo.MetodoPago + Environment.NewLine
                 + "Empleado: Nº " + recibo.EmpleadoId;
 
@@ -371,6 +422,80 @@ namespace GymFlow.InterfazUsuario
             }
 
             return ultimo;
+        }
+
+        private void txtImporte_Validating(object sender, CancelEventArgs e)
+        {
+            e.Cancel = !ActualizarEstadoImporte();
+        }
+
+        private string DescribirAplicacionSaldo(ResumenCobro resumen)
+        {
+            decimal saldoAFavor = Math.Max(0m, -resumen.Saldo);
+            string detalle = "Saldo favorable disponible: " + saldoAFavor.ToString("C2", CulturaMonetaria) + Environment.NewLine
+                + "Importe de la cuota: " + resumen.PrecioCuota.ToString("C2", CulturaMonetaria) + Environment.NewLine;
+
+            if (resumen.TieneNotaVentaDelPeriodo)
+            {
+                return detalle
+                    + "La Nota de Venta del período ya existe. No se generará otra ni se registrará un movimiento adicional."
+                    + Environment.NewLine
+                    + "La cuota se activará durante 30 días.";
+            }
+
+            decimal restante = saldoAFavor - resumen.PrecioCuota;
+            return detalle
+                + "Crédito que se utilizará: " + resumen.PrecioCuota.ToString("C2", CulturaMonetaria) + Environment.NewLine
+                + "Crédito restante: " + Math.Max(0m, restante).ToString("C2", CulturaMonetaria) + Environment.NewLine
+                + "Se generará la Nota de Venta del período y se activará la cuota durante 30 días.";
+        }
+
+        private bool TryParseImporte(string texto, out decimal importe)
+        {
+            return decimal.TryParse(texto, NumberStyles.Currency, CulturaMonetaria, out importe);
+        }
+
+        private void txtImporte_TextChanged(object sender, EventArgs e)
+        {
+            ActualizarEstadoImporte();
+        }
+
+        private bool ActualizarEstadoImporte()
+        {
+            if (this._resumenCobroActual == null || !this.txtImporte.Enabled)
+            {
+                this.errorProvider.SetError(this.txtImporte, string.Empty);
+                return false;
+            }
+
+            decimal importe;
+            if (!TryParseImporte(this.txtImporte.Text, out importe) || importe <= 0)
+            {
+                this.errorProvider.SetError(this.txtImporte, "Ingrese un importe numérico mayor a cero.");
+                this.btnRegistrar.Enabled = false;
+                return false;
+            }
+
+            if (importe < this._resumenCobroActual.MinimoExigible)
+            {
+                this.errorProvider.SetError(this.txtImporte, "El importe no puede ser inferior al mínimo exigible de " + this._resumenCobroActual.MinimoExigible.ToString("C2", CulturaMonetaria) + ".");
+                this.btnRegistrar.Enabled = false;
+                return false;
+            }
+
+            this.errorProvider.SetError(this.txtImporte, string.Empty);
+            this.btnRegistrar.Enabled = this._resumenCobroActual.MinimoExigible > 0m;
+            return true;
+        }
+
+        private string DescribirRechazoAplicacionSaldo(ResumenCobro resumen)
+        {
+            if (resumen.MinimoExigible > 0m && resumen.Saldo > -resumen.PrecioCuota)
+            {
+                return "El saldo favorable disponible no alcanza para cubrir la cuota.";
+            }
+
+            return "No se puede aplicar el saldo a favor. La cuota puede estar vigente o la información financiera cambió.";
         }
     }
 }

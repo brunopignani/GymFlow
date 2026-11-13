@@ -7,10 +7,12 @@ namespace GymFlow.Aplicacion
         public int Emitidos { get; set; }
         public int YaEmitidos { get; set; }
         public List<string> NoProcesados { get; set; }
+        public List<DetalleDebitoMensual> Detalles { get; set; }
 
         public ResultadoDebitoMensual()
         {
             NoProcesados = new List<string>();
+            Detalles = new List<DetalleDebitoMensual>();
         }
     }
 }
