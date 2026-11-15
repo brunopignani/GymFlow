@@ -27,8 +27,10 @@ El punto de composición es `GymFlow.InterfazUsuario/Program.cs`. Registra `GymF
 - cuenta corriente, movimientos, tipos, cuotas, asignaciones e inscripciones;
 - `NotaCredito.NotaVentaId` con FK, índice y `DeleteBehavior.Restrict`;
 - `CuotaCliente.FechaVencimiento` como nullable por el tipo `DateTime?`.
+- `NotaVenta.Periodo` como fecha del primer día del mes y unicidad por `CuotaClienteId` y período.
+- `Comprobante.Numero` como `nvarchar(11)` obligatorio y único.
 
-Las migraciones están en `GymFlow.ContextoBD/Migrations`; también existe el script `Scripts/03_VincularNotasCreditoNotaVenta.sql`. El repositorio contiene la migración de actualización de notas de crédito y vencimiento; la base verificada anteriormente tenía además un historial inicial, por lo que el historial debe tratarse como un punto operativo a confirmar antes de nuevas migraciones.
+Las migraciones están en `GymFlow.ContextoBD/Migrations`; también existe el script `Scripts/03_VincularNotasCreditoNotaVenta.sql`. La migración `AgregarPeriodoYNumeracionSegura` completa `NotaVenta.Periodo`, valida el historial antes de crear índices únicos y crea las secuencias `Seq_ReciboPago`, `Seq_NotaVenta` y `Seq_NotaCredito` con inicio calculado desde los números históricos. La migración está protegida para ejecutarse únicamente sobre `GymFlowDB_Pruebas`. El historial debe tratarse como un punto operativo a confirmar antes de nuevas migraciones.
 
 Los repositorios principales son `ClienteRepositorio`, `EmpleadoRepositorio`, `UsuarioRepositorio`, `ActividadRepositorio`, `InscripcionRepositorio`, `CuotaRepositorio`, `CuotaClienteRepositorio`, `CuentaCorrienteRepositorio`, `MovimientoRepositorio`, `ComprobanteRepositorio`, `TipoMovimientoRepositorio` y `PagoRepositorio`. `TransaccionBD` encapsula `BeginTransaction`, `Commit`, `Rollback` y limpieza del `ChangeTracker`.
 

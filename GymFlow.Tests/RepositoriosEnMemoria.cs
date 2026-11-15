@@ -27,6 +27,9 @@ namespace GymFlow.Tests
         public int Revertidas;
         public IsolationLevel? UltimoNivelAislamiento;
         public int NotaVentaBloqueadaId;
+        public int SiguienteNumeroRecibo = 1;
+        public int SiguienteNumeroNotaVenta = 1;
+        public int SiguienteNumeroNotaCredito = 1;
 
         public bool FallarAlGuardarMovimiento;
         public bool RechazarGuardarComprobante;
@@ -176,6 +179,28 @@ namespace GymFlow.Tests
         public Comprobante GetComprobanteById(int id)
         {
             return _datos.Comprobantes.FirstOrDefault(c => c.Id == id);
+        }
+
+        public NotaVenta ObtenerNotaVentaPorCuotaYPeriodo(int cuotaClienteId, DateTime periodo)
+        {
+            return _datos.Comprobantes
+                .OfType<NotaVenta>()
+                .FirstOrDefault(nv => nv.CuotaClienteId == cuotaClienteId && nv.Periodo == periodo);
+        }
+
+        public int ObtenerSiguienteNumeroRecibo()
+        {
+            return _datos.SiguienteNumeroRecibo++;
+        }
+
+        public int ObtenerSiguienteNumeroNotaVenta()
+        {
+            return _datos.SiguienteNumeroNotaVenta++;
+        }
+
+        public int ObtenerSiguienteNumeroNotaCredito()
+        {
+            return _datos.SiguienteNumeroNotaCredito++;
         }
 
         public void BloquearNotaVentaParaAcreditar(int notaVentaId)

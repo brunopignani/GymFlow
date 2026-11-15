@@ -39,6 +39,7 @@ namespace GymFlow.Tests
 
             NotaCredito notaCredito = datos.Comprobantes.OfType<NotaCredito>().Single();
             Assert.AreEqual(300m, notaCredito.Total);
+            Assert.AreEqual("NC-00000001", notaCredito.Numero);
             Assert.AreEqual("Bonificación", notaCredito.Motivo);
             Assert.AreEqual(1, notaCredito.NotaVentaId);
 

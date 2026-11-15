@@ -128,8 +128,7 @@ namespace GymFlow.Aplicacion
 
         private string GenerarNumeroNotaCredito()
         {
-            int cantidad = _comprobanteRepositorio.GetAllComprobantes().Count;
-            return "NC-" + (cantidad + 1).ToString("D8");
+            return "NC-" + _comprobanteRepositorio.ObtenerSiguienteNumeroNotaCredito().ToString("D8");
         }
     }
 }

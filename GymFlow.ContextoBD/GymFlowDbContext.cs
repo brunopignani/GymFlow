@@ -43,6 +43,10 @@ namespace GymFlow.ContextoBD
             modelBuilder.Entity<Pago>().Property(p => p.Monto).HasPrecision(18, 2);
             modelBuilder.Entity<Movimiento>().Property(m => m.Importe).HasPrecision(18, 2);
             modelBuilder.Entity<Comprobante>().Property(c => c.Total).HasPrecision(18, 2);
+            modelBuilder.Entity<Comprobante>().Property(c => c.Numero).HasMaxLength(11).IsRequired();
+            modelBuilder.Entity<Comprobante>()
+                .HasIndex(c => c.Numero)
+                .IsUnique();
 
             modelBuilder.Entity<CuentaCorriente>().HasKey(cc => cc.Id);
             modelBuilder.Entity<Movimiento>().HasKey(m => m.Id);
@@ -118,6 +122,14 @@ namespace GymFlow.ContextoBD
                 .HasOne(nv => nv.CuotaCliente)
                 .WithMany()
                 .HasForeignKey(nv => nv.CuotaClienteId);
+
+            modelBuilder.Entity<NotaVenta>()
+                .Property(nv => nv.Periodo)
+                .HasColumnType("date");
+
+            modelBuilder.Entity<NotaVenta>()
+                .HasIndex(nv => new { nv.CuotaClienteId, nv.Periodo })
+                .IsUnique();
 
             modelBuilder.Entity<NotaCredito>()
                 .HasOne(nc => nc.NotaVenta)

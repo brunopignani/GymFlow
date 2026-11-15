@@ -84,7 +84,7 @@ namespace GymFlow.Aplicacion
                     continue;
                 }
 
-                NotaVenta notaVentaExistente = ObtenerNotaVentaDelPeriodo(cuenta.Id, cuotaCliente.Id, hoy);
+                NotaVenta notaVentaExistente = ObtenerNotaVentaDelPeriodo(cuotaCliente.Id, hoy);
                 if (notaVentaExistente != null)
                 {
                     resultado.YaEmitidos = resultado.YaEmitidos + 1;
@@ -101,7 +101,7 @@ namespace GymFlow.Aplicacion
                 if (EmitirDebito(cuenta, cuotaCliente, cuota, tipoDebito, hoy))
                 {
                     resultado.Emitidos = resultado.Emitidos + 1;
-                    NotaVenta notaVentaEmitida = ObtenerNotaVentaDelPeriodo(cuenta.Id, cuotaCliente.Id, hoy);
+                    NotaVenta notaVentaEmitida = ObtenerNotaVentaDelPeriodo(cuotaCliente.Id, hoy);
                     resultado.Detalles.Add(new DetalleDebitoMensual
                     {
                         Nombre = cliente.Apellido + " " + cliente.Nombre,
@@ -119,27 +119,15 @@ namespace GymFlow.Aplicacion
             return resultado;
         }
 
-        private bool TieneDebitoDelPeriodo(int cuentaId, int? cuotaClienteId, DateTime fecha)
+        private bool TieneDebitoDelPeriodo(int cuotaClienteId, DateTime fecha)
         {
-            return ObtenerNotaVentaDelPeriodo(cuentaId, cuotaClienteId, fecha) != null;
+            return ObtenerNotaVentaDelPeriodo(cuotaClienteId, fecha) != null;
         }
 
-        private NotaVenta ObtenerNotaVentaDelPeriodo(int cuentaId, int? cuotaClienteId, DateTime fecha)
+        private NotaVenta ObtenerNotaVentaDelPeriodo(int cuotaClienteId, DateTime fecha)
         {
-            List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuentaId);
-
-            foreach (Movimiento movimiento in movimientos)
-            {
-                if (movimiento.Comprobante is NotaVenta
-                    && (!cuotaClienteId.HasValue || ((NotaVenta)movimiento.Comprobante).CuotaClienteId == cuotaClienteId.Value)
-                    && movimiento.Comprobante.FechaEmision.Year == fecha.Year
-                    && movimiento.Comprobante.FechaEmision.Month == fecha.Month)
-                {
-                    return (NotaVenta)movimiento.Comprobante;
-                }
-            }
-
-            return null;
+            DateTime periodo = new DateTime(fecha.Year, fecha.Month, 1);
+            return _comprobanteRepositorio.ObtenerNotaVentaPorCuotaYPeriodo(cuotaClienteId, periodo);
         }
 
         private void AgregarNoProcesado(ResultadoDebitoMensual resultado, Cliente cliente, string motivo)
@@ -185,7 +173,7 @@ namespace GymFlow.Aplicacion
             TipoMovimiento tipoDebito,
             DateTime fecha)
         {
-            if (TieneDebitoDelPeriodo(cuenta.Id, cuotaCliente.Id, fecha))
+            if (TieneDebitoDelPeriodo(cuotaCliente.Id, fecha))
             {
                 return true;
             }
@@ -193,6 +181,7 @@ namespace GymFlow.Aplicacion
             NotaVenta notaVenta = new NotaVenta();
             notaVenta.Numero = GenerarNumeroNotaVenta();
             notaVenta.FechaEmision = fecha;
+            notaVenta.Periodo = new DateTime(fecha.Year, fecha.Month, 1);
             notaVenta.Total = precio;
             notaVenta.CuotaClienteId = cuotaCliente.Id;
 
@@ -213,8 +202,7 @@ namespace GymFlow.Aplicacion
 
         private string GenerarNumeroNotaVenta()
         {
-            int cantidad = _comprobanteRepositorio.GetAllComprobantes().Count;
-            return "NV-" + (cantidad + 1).ToString("D8");
+            return "NV-" + _comprobanteRepositorio.ObtenerSiguienteNumeroNotaVenta().ToString("D8");
         }
     }
 }

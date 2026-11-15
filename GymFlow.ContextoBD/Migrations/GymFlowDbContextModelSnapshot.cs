@@ -53,13 +53,18 @@ namespace GymFlow.ContextoBD.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Numero")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
 
                     b.Property<decimal>("Total")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Numero")
+                        .IsUnique();
 
                     b.ToTable("T_COMPROBANTE", (string)null);
 
@@ -319,7 +324,12 @@ namespace GymFlow.ContextoBD.Migrations
                     b.Property<int>("CuotaClienteId")
                         .HasColumnType("int");
 
-                    b.HasIndex("CuotaClienteId");
+                    b.Property<DateTime>("Periodo")
+                        .HasColumnType("date");
+
+                    b.HasIndex("CuotaClienteId", "Periodo")
+                        .IsUnique()
+                        .HasFilter("[CuotaClienteId] IS NOT NULL AND [Periodo] IS NOT NULL");
 
                     b.ToTable("T_NOTA_VENTA", (string)null);
                 });

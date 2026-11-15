@@ -307,8 +307,7 @@ namespace GymFlow.Aplicacion
 
         private string GenerarNumeroRecibo()
         {
-            int cantidad = _comprobanteRepositorio.GetAllComprobantes().Count;
-            return "RP-" + (cantidad + 1).ToString("D8");
+            return "RP-" + _comprobanteRepositorio.ObtenerSiguienteNumeroRecibo().ToString("D8");
         }
     }
 }

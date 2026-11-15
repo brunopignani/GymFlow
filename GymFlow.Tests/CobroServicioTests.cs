@@ -58,6 +58,7 @@ namespace GymFlow.Tests
 
             ReciboPago recibo = datos.Comprobantes.OfType<ReciboPago>().Single();
             Assert.AreEqual(1000m, recibo.Total);
+            Assert.AreEqual("RP-00000001", recibo.Numero);
             Assert.AreEqual("Efectivo", recibo.MetodoPago);
             Assert.AreEqual(10, recibo.EmpleadoId);
             Assert.AreEqual(DateTime.Today, recibo.FechaEmision);
@@ -215,6 +216,7 @@ namespace GymFlow.Tests
             {
                 Numero = "NV-1",
                 FechaEmision = DateTime.Today,
+                Periodo = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
                 Total = 1000m,
                 CuotaClienteId = 5
             });
@@ -390,6 +392,7 @@ namespace GymFlow.Tests
             {
                 Numero = "NV-1",
                 FechaEmision = DateTime.Today,
+                Periodo = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
                 Total = 1000m,
                 CuotaClienteId = 5
             });

@@ -2,6 +2,7 @@ using GymFlow.Abstracciones;
 using GymFlow.ContextoBD;
 using GymFlow.Dominio;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -40,6 +41,28 @@ namespace GymFlow.Repositorio
                 .FirstOrDefault(c => c.Id == id);
         }
 
+        public NotaVenta ObtenerNotaVentaPorCuotaYPeriodo(int cuotaClienteId, DateTime periodo)
+        {
+            return _contexto.NotasVenta
+                .Include(nv => nv.CuotaCliente)
+                .FirstOrDefault(nv => nv.CuotaClienteId == cuotaClienteId && nv.Periodo == periodo);
+        }
+
+        public int ObtenerSiguienteNumeroRecibo()
+        {
+            return ObtenerSiguienteNumero("Seq_ReciboPago");
+        }
+
+        public int ObtenerSiguienteNumeroNotaVenta()
+        {
+            return ObtenerSiguienteNumero("Seq_NotaVenta");
+        }
+
+        public int ObtenerSiguienteNumeroNotaCredito()
+        {
+            return ObtenerSiguienteNumero("Seq_NotaCredito");
+        }
+
         public void BloquearNotaVentaParaAcreditar(int notaVentaId)
         {
             _contexto.Database.ExecuteSqlInterpolated(
@@ -51,6 +74,14 @@ namespace GymFlow.Repositorio
             return _contexto.NotasCredito
                 .Where(nc => nc.NotaVentaId == notaVentaId)
                 .Sum(nc => (decimal?)nc.Total) ?? 0m;
+        }
+
+        private int ObtenerSiguienteNumero(string secuencia)
+        {
+            return _contexto.Database
+                .SqlQueryRaw<int>("SELECT NEXT VALUE FOR dbo." + secuencia)
+                .AsEnumerable()
+                .Single();
         }
     }
 }

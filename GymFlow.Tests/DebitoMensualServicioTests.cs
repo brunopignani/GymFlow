@@ -49,6 +49,7 @@ namespace GymFlow.Tests
             Assert.AreEqual(1000m, notaVenta.Total);
             Assert.AreEqual(5, notaVenta.CuotaClienteId);
             Assert.AreEqual(DateTime.Today, notaVenta.FechaEmision);
+            Assert.AreEqual(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1), notaVenta.Periodo);
 
             Movimiento movimiento = datos.Movimientos.Single();
             Assert.AreEqual(notaVenta.Id, movimiento.ComprobanteId);
