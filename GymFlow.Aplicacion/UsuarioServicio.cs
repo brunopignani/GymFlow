@@ -8,11 +8,16 @@ namespace GymFlow.Aplicacion
     {
         private readonly IUsuarioRepositorio _usuarioRepositorio;
         private readonly IEmpleadoRepositorio _empleadoRepositorio;
+        private readonly IPersonaRepositorio _personaRepositorio;
 
-        public UsuarioServicio(IUsuarioRepositorio usuarioRepositorio, IEmpleadoRepositorio empleadoRepositorio)
+        public UsuarioServicio(
+            IUsuarioRepositorio usuarioRepositorio,
+            IEmpleadoRepositorio empleadoRepositorio,
+            IPersonaRepositorio personaRepositorio)
         {
             _usuarioRepositorio = usuarioRepositorio;
             _empleadoRepositorio = empleadoRepositorio;
+            _personaRepositorio = personaRepositorio;
         }
 
         public Empleado Login(string nombreUsuario, string clave)
@@ -46,7 +51,7 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            if (_empleadoRepositorio.GetEmpleadoByDni(dni) != null)
+            if (_personaRepositorio.ExisteDni(dni))
             {
                 return false;
             }
@@ -95,7 +100,7 @@ namespace GymFlow.Aplicacion
             return _empleadoRepositorio.GetAllEmpleados();
         }
 
-        public bool ModificarUsuario(int empleadoId, int dni, string nombre, string apellido, string telefono, string nombreUsuario)
+        public bool ModificarUsuario(int empleadoId, int dni, string nombre, string apellido, string telefono, string nombreUsuario, string claveNueva = null)
         {
             Empleado empleado = _empleadoRepositorio.GetEmpleadoById(empleadoId);
 
@@ -110,9 +115,7 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            Empleado conMismoDni = _empleadoRepositorio.GetEmpleadoByDni(dni);
-
-            if (conMismoDni != null && conMismoDni.Id != empleadoId)
+            if (_personaRepositorio.ExisteDni(dni, empleadoId))
             {
                 return false;
             }
@@ -129,6 +132,16 @@ namespace GymFlow.Aplicacion
             empleado.Apellido = apellido.Trim();
             empleado.Telefono = telefono.Trim();
             empleado.Usuario.Nombre = nombreUsuario.Trim();
+
+            if (!string.IsNullOrEmpty(claveNueva))
+            {
+                if (string.IsNullOrWhiteSpace(claveNueva))
+                {
+                    return false;
+                }
+
+                empleado.Usuario.Clave = ClaveSegura.Hashear(claveNueva);
+            }
 
             return _empleadoRepositorio.UpdateEmpleado(empleado);
         }

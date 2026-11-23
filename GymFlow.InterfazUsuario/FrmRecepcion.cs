@@ -1,6 +1,5 @@
 using GymFlow.Aplicacion;
 using GymFlow.Dominio;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Drawing;
 using System.Linq;
@@ -11,10 +10,8 @@ namespace GymFlow.InterfazUsuario
     public class FrmRecepcion : Form
     {
         private readonly ClienteServicio _clienteServicio;
-        private readonly PagoServicio _pagoServicio;
         private readonly InscripcionServicio _inscripcionServicio;
         private readonly ActividadServicio _actividadServicio;
-        private readonly IServiceProvider _serviceProvider;
 
         private Cliente _clienteCargado;
         private CuotaCliente _cuotaClienteCargada;
@@ -28,13 +25,11 @@ namespace GymFlow.InterfazUsuario
         private ComboBox cmbActividades;
         private Button btnInscribir;
 
-        public FrmRecepcion(ClienteServicio clienteServicio, PagoServicio pagoServicio, InscripcionServicio inscripcionServicio, ActividadServicio actividadServicio, IServiceProvider serviceProvider)
+        public FrmRecepcion(ClienteServicio clienteServicio, InscripcionServicio inscripcionServicio, ActividadServicio actividadServicio)
         {
             _clienteServicio = clienteServicio;
-            _pagoServicio = pagoServicio;
             _inscripcionServicio = inscripcionServicio;
             _actividadServicio = actividadServicio;
-            _serviceProvider = serviceProvider;
 
             InitializeComponent();
             CargarActividades();
@@ -201,7 +196,7 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex.ToString());
-                if (EsConflictoDeConcurrencia(ex))
+                if (ConcurrenciaUI.EsConflictoDeConcurrencia(ex))
                 {
                     MessageBox.Show("La inscripción no pudo completarse debido a una contienda simultánea de cupos con otra operación. Por favor, intente nuevamente.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
@@ -210,21 +205,6 @@ namespace GymFlow.InterfazUsuario
                     MessageBox.Show("Ocurrió un error al inscribir al cliente. Intente nuevamente.", "Recepción", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-        }
-
-        private bool EsConflictoDeConcurrencia(Exception ex)
-        {
-            Exception actual = ex;
-            while (actual != null)
-            {
-                if (actual.Message.IndexOf("deadlock", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    actual.Message.IndexOf("1205", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return true;
-                }
-                actual = actual.InnerException;
-            }
-            return false;
         }
     }
 }

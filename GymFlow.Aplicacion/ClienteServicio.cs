@@ -10,34 +10,34 @@ namespace GymFlow.Aplicacion
     public class ClienteServicio
     {
         private readonly IClienteRepositorio _clienteRepositorio;
+        private readonly IPersonaRepositorio _personaRepositorio;
         private readonly ICuotaClienteRepositorio _cuotaClienteRepositorio;
         private readonly IInscripcionRepositorio _inscripcionRepositorio;
         private readonly ICuentaCorrienteRepositorio _cuentaCorrienteRepositorio;
         private readonly IMovimientoRepositorio _movimientoRepositorio;
         private readonly ICuotaRepositorio _cuotaRepositorio;
         private readonly IComprobanteRepositorio _comprobanteRepositorio;
-        private readonly IPagoRepositorio _pagoRepositorio;
         private readonly ITransaccionBD _transaccionBD;
 
         public ClienteServicio(
             IClienteRepositorio clienteRepositorio,
+            IPersonaRepositorio personaRepositorio,
             ICuotaClienteRepositorio cuotaClienteRepositorio,
             IInscripcionRepositorio inscripcionRepositorio,
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
             IMovimientoRepositorio movimientoRepositorio,
             ICuotaRepositorio cuotaRepositorio,
             IComprobanteRepositorio comprobanteRepositorio,
-            IPagoRepositorio pagoRepositorio,
             ITransaccionBD transaccionBD)
         {
             _clienteRepositorio = clienteRepositorio;
+            _personaRepositorio = personaRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
             _inscripcionRepositorio = inscripcionRepositorio;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _movimientoRepositorio = movimientoRepositorio;
             _cuotaRepositorio = cuotaRepositorio;
             _comprobanteRepositorio = comprobanteRepositorio;
-            _pagoRepositorio = pagoRepositorio;
             _transaccionBD = transaccionBD;
         }
 
@@ -97,7 +97,7 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            if (_clienteRepositorio.GetClienteByDNI(cliente.Dni) != null)
+            if (_personaRepositorio.ExisteDni(cliente.Dni))
             {
                 return false;
             }
@@ -130,9 +130,7 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            Cliente conMismoDni = _clienteRepositorio.GetClienteByDNI(cliente.Dni);
-
-            if (conMismoDni != null && conMismoDni.Id != cliente.Id)
+            if (_personaRepositorio.ExisteDni(cliente.Dni, cliente.Id))
             {
                 return false;
             }
@@ -147,7 +145,7 @@ namespace GymFlow.Aplicacion
 
         public ResultadoBajaCliente DeleteClienteConResultado(int id)
         {
-            if (!_clienteRepositorio.GetAllClientes().Any(c => c.Id == id))
+            if (_clienteRepositorio.GetClienteById(id) == null)
             {
                 return ResultadoBajaCliente.ClienteInexistente;
             }
@@ -156,7 +154,7 @@ namespace GymFlow.Aplicacion
 
             try
             {
-                Cliente cliente = _clienteRepositorio.GetAllClientes().FirstOrDefault(c => c.Id == id);
+                Cliente cliente = _clienteRepositorio.GetClienteById(id);
 
                 if (cliente == null)
                 {
@@ -193,27 +191,10 @@ namespace GymFlow.Aplicacion
                 }
 
                 List<int> idsCuotas = cuotasCliente.Select(cc => cc.Id).ToList();
-                List<Comprobante> comprobantes = _comprobanteRepositorio.GetAllComprobantes();
-                bool tieneNotaVenta = comprobantes
-                    .OfType<NotaVenta>()
-                    .Any(nv => idsCuotas.Contains(nv.CuotaClienteId));
-                HashSet<int> idsNotasVenta = comprobantes
-                    .OfType<NotaVenta>()
-                    .Where(nv => idsCuotas.Contains(nv.CuotaClienteId))
-                    .Select(nv => nv.Id)
-                    .ToHashSet();
-                bool tieneNotaCredito = comprobantes
-                    .OfType<NotaCredito>()
-                    .Any(nc => idsNotasVenta.Contains(nc.NotaVentaId));
 
-                if (tieneNotaVenta || tieneNotaCredito)
+                if (_comprobanteRepositorio.ExisteComprobanteParaCuotas(idsCuotas))
                 {
                     return RechazarBaja(ResultadoBajaCliente.Comprobantes);
-                }
-
-                if (_pagoRepositorio.GetPagosByCliente(id).Count > 0)
-                {
-                    return RechazarBaja(ResultadoBajaCliente.Pagos);
                 }
 
                 foreach (CuotaCliente cuotaCliente in cuotasCliente)
@@ -274,13 +255,16 @@ namespace GymFlow.Aplicacion
         public List<EstadoCliente> GetEstadoClientes()
         {
             List<EstadoCliente> estados = new List<EstadoCliente>();
+            Dictionary<int, CuotaCliente> cuotasActivas = _cuotaClienteRepositorio.GetCuotasActivasPorCliente();
 
             foreach (Cliente cliente in _clienteRepositorio.GetAllClientes())
             {
+                cuotasActivas.TryGetValue(cliente.Id, out CuotaCliente cuotaCliente);
+
                 EstadoCliente estado = new EstadoCliente();
                 estado.Cliente = cliente;
-                estado.CuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(cliente.Id);
-                estado.TieneCuota = estado.CuotaCliente != null;
+                estado.CuotaCliente = cuotaCliente;
+                estado.TieneCuota = cuotaCliente != null;
 
                 estados.Add(estado);
             }

@@ -8,8 +8,8 @@ namespace GymFlow.Abstracciones
         bool AddCuotaCliente(CuotaCliente cuotaCliente);
         bool DeleteCuotaCliente(int id);
         List<CuotaCliente> GetCuotasByCliente(int cliId);
-        bool UpdateEstadoCuota(int cclId, string nuevoEstado);
         CuotaCliente GetCuotaActivaByCliente(int cliId);
+        Dictionary<int, CuotaCliente> GetCuotasActivasPorCliente();
         CuotaCliente GetCuotaClienteById(int id);
         bool UpdateCuotaCliente(CuotaCliente cuotaCliente);
     }

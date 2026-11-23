@@ -9,7 +9,6 @@ namespace GymFlow.Aplicacion
         CuentaCorrienteInexistente,
         Movimientos,
         Comprobantes,
-        Pagos,
         UsuarioAsociado
     }
 }

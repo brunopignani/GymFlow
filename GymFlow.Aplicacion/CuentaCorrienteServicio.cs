@@ -35,7 +35,7 @@ namespace GymFlow.Aplicacion
             return resumen;
         }
 
-        private decimal CalcularSaldo(List<Movimiento> movimientos)
+        public static decimal CalcularSaldo(List<Movimiento> movimientos)
         {
             decimal saldo = 0;
 

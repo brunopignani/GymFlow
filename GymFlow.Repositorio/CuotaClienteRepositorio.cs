@@ -39,25 +39,20 @@ namespace GymFlow.Repositorio
             return _contexto.CuotasCliente.Where(cc => cc.ClienteId == cliId).ToList();
         }
 
-        public bool UpdateEstadoCuota(int cclId, string nuevoEstado)
-        {
-            CuotaCliente cuotaCliente = _contexto.CuotasCliente.FirstOrDefault(cc => cc.Id == cclId);
-
-            if (cuotaCliente == null)
-            {
-                return false;
-            }
-
-            cuotaCliente.Estado = nuevoEstado;
-            return _contexto.SaveChanges() > 0;
-        }
-
         public CuotaCliente GetCuotaActivaByCliente(int cliId)
         {
             return _contexto.CuotasCliente
                 .Where(cc => cc.ClienteId == cliId)
                 .OrderByDescending(cc => cc.Id)
                 .FirstOrDefault();
+        }
+
+        public Dictionary<int, CuotaCliente> GetCuotasActivasPorCliente()
+        {
+            return _contexto.CuotasCliente
+                .GroupBy(cc => cc.ClienteId)
+                .Select(g => g.OrderByDescending(cc => cc.Id).First())
+                .ToDictionary(cc => cc.ClienteId);
         }
 
         public CuotaCliente GetCuotaClienteById(int id)

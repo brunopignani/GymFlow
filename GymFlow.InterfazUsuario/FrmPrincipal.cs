@@ -86,11 +86,6 @@ namespace GymFlow.InterfazUsuario
             Abrir<FrmClientes>();
         }
 
-        private void itemEstadoClientes_Click(object sender, EventArgs e)
-        {
-            Abrir<FrmEstadoClientes>();
-        }
-
         private void itemAutoingreso_Click(object sender, EventArgs e)
         {
             Abrir<FrmAutoingreso>();
@@ -104,16 +99,6 @@ namespace GymFlow.InterfazUsuario
         private void itemRecepcion_Click(object sender, EventArgs e)
         {
             Abrir<FrmRecepcion>();
-        }
-
-        private void itemClientesPorActividad_Click(object sender, EventArgs e)
-        {
-            Abrir<FrmClientesPorActividad>();
-        }
-
-        private void itemDesinscripcion_Click(object sender, EventArgs e)
-        {
-            Abrir<FrmDesinscripcion>();
         }
 
         private void itemBajaMorosos_Click(object sender, EventArgs e)

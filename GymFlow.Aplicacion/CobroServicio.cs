@@ -311,7 +311,7 @@ namespace GymFlow.Aplicacion
             }
 
             List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id);
-            decimal saldo = CalcularSaldo(movimientos);
+            decimal saldo = CuentaCorrienteServicio.CalcularSaldo(movimientos);
 
             DateTime periodo = new DateTime(fecha.Year, fecha.Month, 1);
             NotaVenta notaVenta = _comprobanteRepositorio.ObtenerNotaVentaPorCuotaYPeriodo(cuotaCliente.Id, periodo);
@@ -378,29 +378,6 @@ namespace GymFlow.Aplicacion
                 TieneInconsistenciaContable = inconsistencia,
                 NotaVentaDelPeriodo = notaVenta
             };
-        }
-
-        private decimal CalcularSaldo(List<Movimiento> movimientos)
-        {
-            decimal saldo = 0m;
-
-            foreach (Movimiento movimiento in movimientos)
-            {
-                if (movimiento.TipoMovimiento.Nombre == NombresTipoMovimiento.Debito)
-                {
-                    saldo += movimiento.Importe;
-                }
-                else if (movimiento.TipoMovimiento.Nombre == NombresTipoMovimiento.Credito)
-                {
-                    saldo -= movimiento.Importe;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"El movimiento {movimiento.Id} tiene un tipo desconocido.");
-                }
-            }
-
-            return saldo;
         }
 
         private string GenerarNumeroRecibo()

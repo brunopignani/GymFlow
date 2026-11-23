@@ -38,6 +38,18 @@ namespace GymFlow.Repositorio
                 .ToList();
         }
 
+        public List<Inscripcion> GetInscripcionesByClientes(List<int> clienteIds)
+        {
+            if (clienteIds == null || clienteIds.Count == 0)
+            {
+                return new List<Inscripcion>();
+            }
+
+            return _contexto.Inscripciones
+                .Where(i => clienteIds.Contains(i.ClienteId))
+                .ToList();
+        }
+
         public bool DeleteInscripcion(int id)
         {
             Inscripcion inscripcion = _contexto.Inscripciones.FirstOrDefault(i => i.Id == id);

@@ -20,7 +20,6 @@ namespace GymFlow.Tests
         public List<Actividad> Actividades = new List<Actividad>();
         public List<Inscripcion> Inscripciones = new List<Inscripcion>();
         public List<Usuario> Usuarios = new List<Usuario>();
-        public List<Pago> Pagos = new List<Pago>();
 
         public int TransaccionesIniciadas;
         public int Confirmadas;
@@ -34,10 +33,16 @@ namespace GymFlow.Tests
         public bool FallarAlGuardarMovimiento;
         public bool RechazarGuardarComprobante;
         public bool FallarAlGuardarInscripcion;
-        public bool FallarAlGuardarPago;
         public bool FallarAlEliminarInscripcion;
         public bool FallarAlEliminarCliente;
         public int CuentaQueFallaAlGuardarMovimiento;
+
+        public int SiguientePersonaId()
+        {
+            int maxCliente = Clientes.Count == 0 ? 0 : Clientes.Max(c => c.Id);
+            int maxEmpleado = Empleados.Count == 0 ? 0 : Empleados.Max(e => e.Id);
+            return Math.Max(maxCliente, maxEmpleado) + 1;
+        }
 
         public static DatosEnMemoria CrearBase()
         {
@@ -229,6 +234,18 @@ namespace GymFlow.Tests
                 .Where(nc => nc.NotaVentaId == notaVentaId)
                 .Sum(nc => nc.Total);
         }
+
+        public bool ExisteComprobanteParaCuotas(List<int> cuotaClienteIds)
+        {
+            if (cuotaClienteIds == null || cuotaClienteIds.Count == 0)
+            {
+                return false;
+            }
+
+            return _datos.Comprobantes
+                .OfType<NotaVenta>()
+                .Any(nv => cuotaClienteIds.Contains(nv.CuotaClienteId));
+        }
     }
 
     public class CuotaClienteRepositorioEnMemoria : ICuotaClienteRepositorio
@@ -256,17 +273,20 @@ namespace GymFlow.Tests
             return _datos.CuotasCliente.Where(cc => cc.ClienteId == cliId).ToList();
         }
 
-        public bool UpdateEstadoCuota(int cclId, string nuevoEstado)
-        {
-            return true;
-        }
-
         public CuotaCliente GetCuotaActivaByCliente(int cliId)
         {
             return _datos.CuotasCliente
                 .Where(cc => cc.ClienteId == cliId)
                 .OrderByDescending(cc => cc.Id)
                 .FirstOrDefault();
+        }
+
+        public Dictionary<int, CuotaCliente> GetCuotasActivasPorCliente()
+        {
+            return _datos.CuotasCliente
+                .GroupBy(cc => cc.ClienteId)
+                .Select(g => g.OrderByDescending(cc => cc.Id).First())
+                .ToDictionary(cc => cc.ClienteId);
         }
 
         public CuotaCliente GetCuotaClienteById(int id)
@@ -321,7 +341,7 @@ namespace GymFlow.Tests
 
         public bool AddEmpleado(Empleado empleado)
         {
-            empleado.Id = _datos.Empleados.Count == 0 ? 1 : _datos.Empleados.Max(e => e.Id) + 1;
+            empleado.Id = _datos.SiguientePersonaId();
 
             if (empleado.Usuario != null)
             {
@@ -354,6 +374,11 @@ namespace GymFlow.Tests
             return _datos.Clientes.ToList();
         }
 
+        public Cliente GetClienteById(int id)
+        {
+            return _datos.Clientes.FirstOrDefault(c => c.Id == id);
+        }
+
         public Cliente GetClienteByDNI(int dni)
         {
             return _datos.Clientes.FirstOrDefault(c => c.Dni == dni);
@@ -361,7 +386,7 @@ namespace GymFlow.Tests
 
         public bool AddCliente(Cliente cliente)
         {
-            cliente.Id = _datos.Clientes.Count == 0 ? 1 : _datos.Clientes.Max(c => c.Id) + 1;
+            cliente.Id = _datos.SiguientePersonaId();
 
             if (cliente.Cuenta != null)
             {
@@ -447,7 +472,6 @@ namespace GymFlow.Tests
         private List<Comprobante> _comprobantes;
         private List<Movimiento> _movimientos;
         private List<Inscripcion> _inscripciones;
-        private List<Pago> _pagos;
         private List<Cliente> _clientes;
         private List<CuentaCorriente> _cuentas;
         private List<CuotaCliente> _cuotasCliente;
@@ -472,7 +496,6 @@ namespace GymFlow.Tests
             _comprobantes = _datos.Comprobantes.ToList();
             _movimientos = _datos.Movimientos.ToList();
             _inscripciones = _datos.Inscripciones.ToList();
-            _pagos = _datos.Pagos.ToList();
             _clientes = _datos.Clientes.ToList();
             _cuentas = _datos.Cuentas.ToList();
             _cuotasCliente = _datos.CuotasCliente.ToList();
@@ -502,8 +525,6 @@ namespace GymFlow.Tests
             _datos.Movimientos.AddRange(_movimientos);
             _datos.Inscripciones.Clear();
             _datos.Inscripciones.AddRange(_inscripciones);
-            _datos.Pagos.Clear();
-            _datos.Pagos.AddRange(_pagos);
             _datos.Clientes.Clear();
             _datos.Clientes.AddRange(_clientes);
             _datos.Cuentas.Clear();
@@ -540,7 +561,6 @@ namespace GymFlow.Tests
             _comprobantes = null;
             _movimientos = null;
             _inscripciones = null;
-            _pagos = null;
             _clientes = null;
             _cuentas = null;
             _cuotasCliente = null;
@@ -562,6 +582,11 @@ namespace GymFlow.Tests
         public List<Actividad> GetAllActividades()
         {
             return _datos.Actividades.ToList();
+        }
+
+        public Actividad GetActividadById(int id)
+        {
+            return _datos.Actividades.FirstOrDefault(a => a.Id == id);
         }
 
         public bool AddActividad(Actividad actividad)
@@ -636,6 +661,18 @@ namespace GymFlow.Tests
             return inscripciones;
         }
 
+        public List<Inscripcion> GetInscripcionesByClientes(List<int> clienteIds)
+        {
+            if (clienteIds == null || clienteIds.Count == 0)
+            {
+                return new List<Inscripcion>();
+            }
+
+            return _datos.Inscripciones
+                .Where(i => clienteIds.Contains(i.ClienteId))
+                .ToList();
+        }
+
         public bool DeleteInscripcion(int id)
         {
             if (_datos.FallarAlEliminarInscripcion)
@@ -684,35 +721,20 @@ namespace GymFlow.Tests
         }
     }
 
-    public class PagoRepositorioEnMemoria : IPagoRepositorio
+    public class PersonaRepositorioEnMemoria : IPersonaRepositorio
     {
         private readonly DatosEnMemoria _datos;
 
-        public PagoRepositorioEnMemoria(DatosEnMemoria datos)
+        public PersonaRepositorioEnMemoria(DatosEnMemoria datos)
         {
             _datos = datos;
         }
 
-        public bool AddPago(Pago pago)
+        public bool ExisteDni(int dni, int? excluirPersonaId = null)
         {
-            if (_datos.FallarAlGuardarPago)
-            {
-                throw new InvalidOperationException("Falla simulada al guardar el pago.");
-            }
-
-            pago.Id = _datos.Pagos.Count == 0 ? 1 : _datos.Pagos.Max(p => p.Id) + 1;
-            _datos.Pagos.Add(pago);
-            return true;
-        }
-
-        public List<Pago> GetAllPagos()
-        {
-            return _datos.Pagos.ToList();
-        }
-
-        public List<Pago> GetPagosByCliente(int cliId)
-        {
-            return _datos.Pagos.Where(p => _datos.CuotasCliente.Any(cc => cc.Id == p.CuotaClienteId && cc.ClienteId == cliId)).ToList();
+            return _datos.Clientes.Cast<Persona>()
+                .Concat(_datos.Empleados)
+                .Any(p => p.Dni == dni && (!excluirPersonaId.HasValue || p.Id != excluirPersonaId.Value));
         }
     }
 }

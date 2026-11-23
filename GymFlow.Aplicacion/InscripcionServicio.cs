@@ -132,19 +132,37 @@ namespace GymFlow.Aplicacion
         {
             ResultadoBajaMorosos resultado = new ResultadoBajaMorosos();
             DateTime hoy = DateTime.Today;
+            Dictionary<int, CuotaCliente> cuotasActivas = _cuotaClienteRepositorio.GetCuotasActivasPorCliente();
+            List<Cliente> morosos = new List<Cliente>();
 
             foreach (Cliente cliente in _clienteRepositorio.GetAllClientes())
             {
-                CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(cliente.Id);
-
-                if (cuotaCliente == null || (cuotaCliente.FechaVencimiento.HasValue && cuotaCliente.FechaVencimiento.Value >= hoy))
+                if (!cuotasActivas.TryGetValue(cliente.Id, out CuotaCliente cuotaCliente))
                 {
                     continue;
                 }
 
-                List<Inscripcion> inscripciones = _inscripcionRepositorio.GetInscripcionesByCliente(cliente.Id);
+                if (cuotaCliente.FechaVencimiento.HasValue && cuotaCliente.FechaVencimiento.Value >= hoy)
+                {
+                    continue;
+                }
 
-                if (inscripciones.Count == 0)
+                morosos.Add(cliente);
+            }
+
+            if (morosos.Count == 0)
+            {
+                return resultado;
+            }
+
+            Dictionary<int, List<Inscripcion>> inscripcionesPorCliente = _inscripcionRepositorio
+                .GetInscripcionesByClientes(morosos.Select(c => c.Id).ToList())
+                .GroupBy(i => i.ClienteId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (Cliente cliente in morosos)
+            {
+                if (!inscripcionesPorCliente.TryGetValue(cliente.Id, out List<Inscripcion> inscripciones) || inscripciones.Count == 0)
                 {
                     continue;
                 }
@@ -193,7 +211,7 @@ namespace GymFlow.Aplicacion
 
         private Actividad BuscarActividad(int actividadId)
         {
-            return _actividadRepositorio.GetAllActividades().FirstOrDefault(a => a.Id == actividadId);
+            return _actividadRepositorio.GetActividadById(actividadId);
         }
 
         private Inscripcion BuscarInscripcion(int clienteId, int actividadId)

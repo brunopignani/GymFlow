@@ -76,6 +76,16 @@ namespace GymFlow.Repositorio
                 .Sum(nc => (decimal?)nc.Total) ?? 0m;
         }
 
+        public bool ExisteComprobanteParaCuotas(List<int> cuotaClienteIds)
+        {
+            if (cuotaClienteIds == null || cuotaClienteIds.Count == 0)
+            {
+                return false;
+            }
+
+            return _contexto.NotasVenta.Any(nv => cuotaClienteIds.Contains(nv.CuotaClienteId));
+        }
+
         private int ObtenerSiguienteNumero(string secuencia)
         {
             return _contexto.Database

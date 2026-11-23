@@ -329,7 +329,7 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.ToString());
-                if (EsConflictoDeConcurrencia(ex))
+                if (ConcurrenciaUI.EsConflictoDeConcurrencia(ex))
                 {
                     MessageBox.Show("La modificación no pudo completarse debido a una contienda simultánea con otra operación. Intente nuevamente.", "Gestionar actividades", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
@@ -423,7 +423,7 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.ToString());
-                if (EsConflictoDeConcurrencia(ex))
+                if (ConcurrenciaUI.EsConflictoDeConcurrencia(ex))
                 {
                     MessageBox.Show("La desinscripción no pudo completarse debido a una contienda simultánea con otra operación. Intente nuevamente.", "Gestionar actividades", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
@@ -432,21 +432,6 @@ namespace GymFlow.InterfazUsuario
                     MessageBox.Show("Ocurrió un error al desinscribir al socio.", "Gestionar actividades", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-        }
-
-        private bool EsConflictoDeConcurrencia(Exception ex)
-        {
-            Exception actual = ex;
-            while (actual != null)
-            {
-                if (actual.Message.IndexOf("deadlock", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    actual.Message.IndexOf("1205", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return true;
-                }
-                actual = actual.InnerException;
-            }
-            return false;
         }
     }
 }

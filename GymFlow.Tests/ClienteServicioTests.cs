@@ -14,13 +14,13 @@ namespace GymFlow.Tests
         {
             return new ClienteServicio(
                 new ClienteRepositorioEnMemoria(datos),
+                new PersonaRepositorioEnMemoria(datos),
                 new CuotaClienteRepositorioEnMemoria(datos),
                 new InscripcionRepositorioEnMemoria(datos),
                 new CuentaCorrienteRepositorioEnMemoria(datos),
                 new MovimientoRepositorioEnMemoria(datos),
                 new CuotaRepositorioEnMemoria(datos),
                 new ComprobanteRepositorioEnMemoria(datos),
-                new PagoRepositorioEnMemoria(datos),
                 new TransaccionEnMemoria(datos));
         }
 
@@ -284,18 +284,6 @@ namespace GymFlow.Tests
             ClienteServicio servicio = CrearServicio(datos);
 
             Assert.AreEqual(ResultadoBajaCliente.Comprobantes, servicio.DeleteClienteConResultado(1));
-        }
-
-        [TestMethod]
-        public void DeleteCliente_ConPagoRegistrado_RechazaLaBaja()
-        {
-            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
-            datos.CuotasCliente[0].FechaVencimiento = null;
-            datos.CuotasCliente[0].Estado = null;
-            datos.Pagos.Add(new Pago { Id = 1, CuotaClienteId = 5, Monto = 1000m, Fecha = DateTime.Today });
-            ClienteServicio servicio = CrearServicio(datos);
-
-            Assert.AreEqual(ResultadoBajaCliente.Pagos, servicio.DeleteClienteConResultado(1));
         }
 
         [TestMethod]
@@ -571,6 +559,60 @@ namespace GymFlow.Tests
             Assert.IsFalse(eva.TieneCuota);
             Assert.AreEqual(EstadosCliente.SinCuota, eva.Estado);
             Assert.IsFalse(eva.Vigente);
+        }
+
+        [TestMethod]
+        public void GetEstadoClientes_ConVariasCuotasHistoricasPorCliente_SeleccionaLaDeMayorIdParaCadaUno()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 1, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(15), Estado = EstadosCliente.Activo });
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 7, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(20), Estado = EstadosCliente.Activo });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 8, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(-1), Estado = EstadosCliente.Vencido });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            var estados = servicio.GetEstadoClientes();
+
+            EstadoCliente ana = estados.Single(e => e.Cliente.Id == 1);
+            EstadoCliente luis = estados.Single(e => e.Cliente.Id == 2);
+            Assert.AreEqual(6, ana.CuotaCliente.Id);
+            Assert.AreEqual(EstadosCliente.Activo, ana.Estado);
+            Assert.AreEqual(8, luis.CuotaCliente.Id);
+            Assert.AreEqual(EstadosCliente.Vencido, luis.Estado);
+        }
+
+        [TestMethod]
+        public void AddCliente_DniRegistradoPorEmpleado_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.Empleados.Add(new Empleado { Id = 11, Dni = 30111222, Nombre = "Marta", Apellido = "Gomez", Telefono = "5551234" });
+            ClienteServicio servicio = CrearServicio(datos);
+
+            Assert.IsFalse(servicio.AddCliente(NuevoCliente(30111222)));
+            Assert.AreEqual(1, datos.Clientes.Count);
+        }
+
+        [TestMethod]
+        public void UpdateCliente_ConservaSuPropioDni_RetornaTrue()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            ClienteServicio servicio = CrearServicio(datos);
+            Cliente actualizado = new Cliente { Id = 1, Dni = 10111222, Nombre = "Ana Maria", Apellido = "Paz", Telefono = "1234567" };
+
+            Assert.IsTrue(servicio.UpdateCliente(actualizado));
+            Assert.AreEqual("Ana Maria", datos.Clientes[0].Nombre);
+        }
+
+        [TestMethod]
+        public void UpdateCliente_DniRegistradoPorEmpleado_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.Empleados.Add(new Empleado { Id = 11, Dni = 30111222, Nombre = "Marta", Apellido = "Gomez", Telefono = "5551234" });
+            ClienteServicio servicio = CrearServicio(datos);
+            Cliente actualizado = new Cliente { Id = 1, Dni = 30111222, Nombre = "Ana", Apellido = "Paz", Telefono = "1234567" };
+
+            Assert.IsFalse(servicio.UpdateCliente(actualizado));
+            Assert.AreEqual(10111222, datos.Clientes[0].Dni);
         }
     }
 }

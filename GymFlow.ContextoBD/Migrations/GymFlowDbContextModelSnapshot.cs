@@ -200,36 +200,6 @@ namespace GymFlow.ContextoBD.Migrations
                     b.ToTable("T_MOVIMIENTO", (string)null);
                 });
 
-            modelBuilder.Entity("GymFlow.Dominio.Pago", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CuotaClienteId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EmpleadoId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("Monto")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CuotaClienteId");
-
-                    b.HasIndex("EmpleadoId");
-
-                    b.ToTable("Pagos");
-                });
-
             modelBuilder.Entity("GymFlow.Dominio.Persona", b =>
                 {
                     b.Property<int>("Id")
@@ -254,6 +224,9 @@ namespace GymFlow.ContextoBD.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Dni")
+                        .IsUnique();
 
                     b.HasIndex("UsuarioId")
                         .IsUnique()
@@ -437,25 +410,6 @@ namespace GymFlow.ContextoBD.Migrations
                     b.Navigation("TipoMovimiento");
                 });
 
-            modelBuilder.Entity("GymFlow.Dominio.Pago", b =>
-                {
-                    b.HasOne("GymFlow.Dominio.CuotaCliente", "CuotaCliente")
-                        .WithMany()
-                        .HasForeignKey("CuotaClienteId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GymFlow.Dominio.Empleado", "Empleado")
-                        .WithMany("PagosRegistrados")
-                        .HasForeignKey("EmpleadoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CuotaCliente");
-
-                    b.Navigation("Empleado");
-                });
-
             modelBuilder.Entity("GymFlow.Dominio.Persona", b =>
                 {
                     b.HasOne("GymFlow.Dominio.Usuario", "Usuario")
@@ -555,8 +509,6 @@ namespace GymFlow.ContextoBD.Migrations
 
             modelBuilder.Entity("GymFlow.Dominio.Empleado", b =>
                 {
-                    b.Navigation("PagosRegistrados");
-
                     b.Navigation("Recibos");
                 });
 #pragma warning restore 612, 618
