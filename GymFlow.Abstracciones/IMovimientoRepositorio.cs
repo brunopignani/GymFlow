@@ -7,5 +7,6 @@ namespace GymFlow.Abstracciones
     {
         bool AddMovimiento(Movimiento movimiento);
         List<Movimiento> GetMovimientosByCuenta(int cuentaId);
+        List<Movimiento> GetMovimientosByComprobante(int comprobanteId);
     }
 }

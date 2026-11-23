@@ -5,7 +5,7 @@ namespace GymFlow.InterfazUsuario
     public static class ConfiguracionBD
     {
         public const string VariableDeEntorno = "GYMFLOW_CADENA_CONEXION";
-        public const string CadenaPredeterminada = "Server=.\\SQLEXPRESS;Database=GymFlowDB;Trusted_Connection=True;TrustServerCertificate=True;";
+        public const string CadenaPredeterminada = "Server=.\\SQLEXPRESS;Database=GymFlowDB_Pruebas;Trusted_Connection=True;TrustServerCertificate=True;";
 
         public static string CadenaConexion
         {

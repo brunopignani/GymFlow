@@ -133,6 +133,20 @@ namespace GymFlow.Tests
 
             return movimientos;
         }
+
+        public List<Movimiento> GetMovimientosByComprobante(int comprobanteId)
+        {
+            List<Movimiento> movimientos = _datos.Movimientos
+                .Where(m => m.ComprobanteId == comprobanteId)
+                .ToList();
+
+            foreach (Movimiento movimiento in movimientos)
+            {
+                movimiento.TipoMovimiento = _datos.Tipos.FirstOrDefault(t => t.Id == movimiento.TipoMovimientoId);
+            }
+
+            return movimientos;
+        }
     }
 
     public class TipoMovimientoRepositorioEnMemoria : ITipoMovimientoRepositorio

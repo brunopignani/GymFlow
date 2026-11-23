@@ -78,8 +78,10 @@ namespace GymFlow.Aplicacion
                 CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
                 TipoMovimiento tipoCredito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
                     .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Credito);
+                TipoMovimiento tipoDebito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
+                    .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Debito);
 
-                if (empleado == null || cuenta == null || cuotaCliente == null || tipoCredito == null)
+                if (empleado == null || cuenta == null || cuotaCliente == null || tipoCredito == null || tipoDebito == null)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -101,10 +103,39 @@ namespace GymFlow.Aplicacion
 
                 ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
 
-                if (resumen == null || resumen.MinimoExigible <= 0m || importe < resumen.MinimoExigible)
+                if (resumen == null || resumen.TieneInconsistenciaContable || resumen.MinimoExigible <= 0m || importe < resumen.MinimoExigible)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
+                }
+
+                if (!_debitoMensualServicio.AsegurarNotaVentaDelPeriodo(
+                    cuenta,
+                    cuotaCliente,
+                    resumen.PrecioCuota,
+                    tipoDebito,
+                    hoy))
+                {
+                    _transaccion.RevertirTransaccion();
+                    return false;
+                }
+
+                // Si la NV ya existía pero no tenía débito (NV huérfana), registrar el débito faltante.
+                if (resumen.TieneNotaVentaDelPeriodo && !resumen.NotaVentaContabilizada && resumen.NotaVentaDelPeriodo != null)
+                {
+                    Movimiento debitoFaltante = new Movimiento
+                    {
+                        Fecha = hoy,
+                        Importe = resumen.NotaVentaDelPeriodo.Total,
+                        TipoMovimientoId = tipoDebito.Id,
+                        ComprobanteId = resumen.NotaVentaDelPeriodo.Id,
+                        CuentaCorrienteId = cuenta.Id
+                    };
+                    if (!_movimientoRepositorio.AddMovimiento(debitoFaltante))
+                    {
+                        _transaccion.RevertirTransaccion();
+                        return false;
+                    }
                 }
 
                 // Registrar recibo y movimiento de crédito.
@@ -138,7 +169,7 @@ namespace GymFlow.Aplicacion
 
                 ResumenCobro resumenFinal = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
 
-                if (resumenFinal == null || resumenFinal.Saldo > 0)
+                if (resumenFinal == null || resumenFinal.TieneInconsistenciaContable || resumenFinal.Saldo > 0)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -206,27 +237,46 @@ namespace GymFlow.Aplicacion
 
                 ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
 
-                if (resumen == null || resumen.Saldo > 0)
+                if (resumen == null || resumen.TieneInconsistenciaContable || resumen.MinimoExigible > 0m)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
                 }
 
-                if (!resumen.TieneNotaVentaDelPeriodo && resumen.Saldo > -cuota.Precio)
+                if (resumen.TieneNotaVentaDelPeriodo && resumen.NotaVentaContabilizada)
                 {
-                    _transaccion.RevertirTransaccion();
-                    return false;
+                    // Caso 1: Débito completo ya registrado. No generar nada.
                 }
-
-                if (!_debitoMensualServicio.AsegurarNotaVentaDelPeriodo(cuenta, cuotaCliente, cuota.Precio, tipoDebito, hoy))
+                else if (!resumen.TieneNotaVentaDelPeriodo)
                 {
-                    _transaccion.RevertirTransaccion();
-                    return false;
+                    // Caso 2: Sin NV. Usar DebitoMensualServicio para emitir NV y débito.
+                    if (!_debitoMensualServicio.AsegurarNotaVentaDelPeriodo(cuenta, cuotaCliente, cuota.Precio, tipoDebito, hoy))
+                    {
+                        _transaccion.RevertirTransaccion();
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Caso 3: NV huérfana. Registrar solo el débito faltante por notaVenta.Total.
+                    Movimiento movimiento = new Movimiento
+                    {
+                        Fecha = hoy,
+                        Importe = resumen.NotaVentaDelPeriodo.Total,
+                        TipoMovimientoId = tipoDebito.Id,
+                        ComprobanteId = resumen.NotaVentaDelPeriodo.Id,
+                        CuentaCorrienteId = cuenta.Id
+                    };
+                    if (!_movimientoRepositorio.AddMovimiento(movimiento))
+                    {
+                        _transaccion.RevertirTransaccion();
+                        return false;
+                    }
                 }
 
                 ResumenCobro resumenFinal = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
 
-                if (resumenFinal == null || resumenFinal.Saldo > 0)
+                if (resumenFinal == null || resumenFinal.TieneInconsistenciaContable || resumenFinal.MinimoExigible > 0m || resumenFinal.Saldo > 0m)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -262,15 +312,60 @@ namespace GymFlow.Aplicacion
 
             List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuenta.Id);
             decimal saldo = CalcularSaldo(movimientos);
-            bool tieneNotaVenta = _comprobanteRepositorio.GetAllComprobantes()
-                .OfType<NotaVenta>()
-                .Any(nv => nv.CuotaClienteId == cuotaCliente.Id
-                    && nv.FechaEmision.Year == fecha.Year
-                    && nv.FechaEmision.Month == fecha.Month);
 
-            decimal minimo = tieneNotaVenta
-                ? Math.Max(0m, saldo)
-                : Math.Max(0m, cuota.Precio + saldo);
+            DateTime periodo = new DateTime(fecha.Year, fecha.Month, 1);
+            NotaVenta notaVenta = _comprobanteRepositorio.ObtenerNotaVentaPorCuotaYPeriodo(cuotaCliente.Id, periodo);
+
+            bool tieneNotaVenta = notaVenta != null;
+            bool notaContabilizada = false;
+            bool inconsistencia = false;
+            decimal deudaPendiente = 0m;
+
+            if (tieneNotaVenta)
+            {
+                List<Movimiento> movimientosNota = _movimientoRepositorio.GetMovimientosByComprobante(notaVenta.Id);
+                bool tieneMovimientoEnOtraCuenta = movimientosNota.Any(m => m.CuentaCorrienteId != cuenta.Id);
+                List<Movimiento> debitosEnEstaCuenta = movimientosNota
+                    .Where(m => m.CuentaCorrienteId == cuenta.Id && m.TipoMovimiento != null
+                        && m.TipoMovimiento.Nombre == NombresTipoMovimiento.Debito)
+                    .ToList();
+
+                if (tieneMovimientoEnOtraCuenta)
+                {
+                    inconsistencia = true;
+                }
+                else if (movimientosNota.Count == 0)
+                {
+                    // NV huérfana: sin movimientos, falta registrar el débito.
+                    deudaPendiente = notaVenta.Total;
+                }
+                else if (movimientosNota.Count == 1 && debitosEnEstaCuenta.Count == 1 && debitosEnEstaCuenta[0].Importe == notaVenta.Total)
+                {
+                    notaContabilizada = true;
+                }
+                else
+                {
+                    inconsistencia = true;
+                }
+            }
+            else
+            {
+                deudaPendiente = cuota.Precio;
+            }
+
+            decimal minimo;
+            if (inconsistencia)
+            {
+                minimo = 0m;
+            }
+            else if (notaContabilizada)
+            {
+                minimo = Math.Max(0m, saldo);
+            }
+            else
+            {
+                minimo = Math.Max(0m, saldo + deudaPendiente);
+            }
 
             return new ResumenCobro
             {
@@ -278,7 +373,10 @@ namespace GymFlow.Aplicacion
                 PrecioCuota = cuota.Precio,
                 Saldo = saldo,
                 MinimoExigible = minimo,
-                TieneNotaVentaDelPeriodo = tieneNotaVenta
+                TieneNotaVentaDelPeriodo = tieneNotaVenta,
+                NotaVentaContabilizada = notaContabilizada,
+                TieneInconsistenciaContable = inconsistencia,
+                NotaVentaDelPeriodo = notaVenta
             };
         }
 

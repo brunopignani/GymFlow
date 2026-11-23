@@ -41,23 +41,43 @@ namespace GymFlow.Aplicacion
             _transaccionBD = transaccionBD;
         }
 
-        public bool ValidarAutoingreso(int dni)
+        public ResultadoAutoingreso ValidarAutoingreso(int dni)
         {
             Cliente cliente = _clienteRepositorio.GetClienteByDNI(dni);
 
             if (cliente == null)
             {
-                return false;
+                return new ResultadoAutoingreso
+                {
+                    SocioEncontrado = false,
+                    AccesoPermitido = false,
+                    Dni = dni,
+                    Actividades = new List<string>()
+                };
             }
 
             CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(cliente.Id);
+            string estado = DeterminarEstadoCuota(cuotaCliente, DateTime.Today);
+            bool accesoPermitido = estado == EstadosCliente.Activo;
 
-            if (cuotaCliente == null)
+            List<Inscripcion> inscripciones = _inscripcionRepositorio.GetInscripcionesByCliente(cliente.Id) ?? new List<Inscripcion>();
+            List<string> actividades = inscripciones
+                .Where(i => i.Actividad != null && !string.IsNullOrWhiteSpace(i.Actividad.Nombre))
+                .Select(i => i.Actividad.Nombre)
+                .Distinct()
+                .ToList();
+
+            return new ResultadoAutoingreso
             {
-                return false;
-            }
-
-            return cuotaCliente.FechaVencimiento.HasValue && cuotaCliente.FechaVencimiento.Value >= DateTime.Today;
+                SocioEncontrado = true,
+                AccesoPermitido = accesoPermitido,
+                Dni = cliente.Dni,
+                Nombre = cliente.Nombre,
+                Apellido = cliente.Apellido,
+                EstadoCuota = estado,
+                FechaVencimiento = cuotaCliente?.FechaVencimiento,
+                Actividades = actividades
+            };
         }
 
         public List<Cliente> GetAllClientes()

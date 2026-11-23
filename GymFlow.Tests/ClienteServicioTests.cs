@@ -340,7 +340,13 @@ namespace GymFlow.Tests
             datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(1);
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.ValidarAutoingreso(10111222));
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.SocioEncontrado);
+            Assert.IsTrue(resultado.AccesoPermitido);
+            Assert.AreEqual("Ana Paz", resultado.NombreCompleto);
+            Assert.AreEqual(10111222, resultado.Dni);
+            Assert.AreEqual(EstadosCliente.Activo, resultado.EstadoCuota);
         }
 
         [TestMethod]
@@ -350,7 +356,11 @@ namespace GymFlow.Tests
             datos.CuotasCliente[0].FechaVencimiento = DateTime.Today;
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsTrue(servicio.ValidarAutoingreso(10111222));
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.SocioEncontrado);
+            Assert.IsTrue(resultado.AccesoPermitido);
+            Assert.AreEqual(EstadosCliente.Activo, resultado.EstadoCuota);
         }
 
         [TestMethod]
@@ -358,7 +368,13 @@ namespace GymFlow.Tests
         {
             ClienteServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.ValidarAutoingreso(10111222));
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.SocioEncontrado);
+            Assert.IsFalse(resultado.AccesoPermitido);
+            Assert.AreEqual(EstadosCliente.Vencido, resultado.EstadoCuota);
+            Assert.AreEqual("Ana Paz", resultado.NombreCompleto);
+            Assert.AreEqual(10111222, resultado.Dni);
         }
 
         [TestMethod]
@@ -366,7 +382,11 @@ namespace GymFlow.Tests
         {
             ClienteServicio servicio = CrearServicio(DatosEnMemoria.CrearBase());
 
-            Assert.IsFalse(servicio.ValidarAutoingreso(999));
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(999);
+
+            Assert.IsFalse(resultado.SocioEncontrado);
+            Assert.IsFalse(resultado.AccesoPermitido);
+            Assert.AreEqual(0, resultado.Actividades.Count);
         }
 
         [TestMethod]
@@ -376,7 +396,67 @@ namespace GymFlow.Tests
             datos.CuotasCliente.Clear();
             ClienteServicio servicio = CrearServicio(datos);
 
-            Assert.IsFalse(servicio.ValidarAutoingreso(10111222));
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.SocioEncontrado);
+            Assert.IsFalse(resultado.AccesoPermitido);
+            Assert.AreEqual(EstadosCliente.SinCuota, resultado.EstadoCuota);
+        }
+
+        [TestMethod]
+        public void ValidarAutoingreso_ClienteConInscripciones_RetornaActividadesCorrectamente()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(5);
+            datos.Actividades.Add(new Actividad { Id = 2, Nombre = "Spinning", CapacidadMaxima = 20 });
+            datos.Inscripciones.Add(new Inscripcion { Id = 1, ClienteId = 1, ActividadId = 1 });
+            datos.Inscripciones.Add(new Inscripcion { Id = 2, ClienteId = 1, ActividadId = 2 });
+
+            ClienteServicio servicio = CrearServicio(datos);
+
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.AccesoPermitido);
+            Assert.AreEqual(2, resultado.Actividades.Count);
+            CollectionAssert.Contains(resultado.Actividades, "Yoga");
+            CollectionAssert.Contains(resultado.Actividades, "Spinning");
+        }
+
+        [TestMethod]
+        public void ValidarAutoingreso_ClienteSinInscripciones_RetornaListaVacia()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = DateTime.Today.AddDays(5);
+            datos.Inscripciones.Clear();
+
+            ClienteServicio servicio = CrearServicio(datos);
+
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.AccesoPermitido);
+            Assert.IsNotNull(resultado.Actividades);
+            Assert.AreEqual(0, resultado.Actividades.Count);
+        }
+
+        [TestMethod]
+        public void ValidarAutoingreso_CuotaPendiente_DeniegaPeroRetornaDatosYEstadoPendiente()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = EstadosCliente.Pendiente;
+            datos.Inscripciones.Add(new Inscripcion { Id = 1, ClienteId = 1, ActividadId = 1 });
+
+            ClienteServicio servicio = CrearServicio(datos);
+
+            ResultadoAutoingreso resultado = servicio.ValidarAutoingreso(10111222);
+
+            Assert.IsTrue(resultado.SocioEncontrado);
+            Assert.IsFalse(resultado.AccesoPermitido);
+            Assert.AreEqual(EstadosCliente.Pendiente, resultado.EstadoCuota);
+            Assert.IsNull(resultado.FechaVencimiento);
+            Assert.AreEqual("Ana Paz", resultado.NombreCompleto);
+            Assert.AreEqual(1, resultado.Actividades.Count);
+            Assert.AreEqual("Yoga", resultado.Actividades[0]);
         }
 
         [TestMethod]

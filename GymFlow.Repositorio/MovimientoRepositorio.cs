@@ -31,5 +31,13 @@ namespace GymFlow.Repositorio
                 .OrderBy(m => m.Fecha)
                 .ToList();
         }
+
+        public List<Movimiento> GetMovimientosByComprobante(int comprobanteId)
+        {
+            return _contexto.Movimientos
+                .Include(m => m.TipoMovimiento)
+                .Where(m => m.ComprobanteId == comprobanteId)
+                .ToList();
+        }
     }
 }

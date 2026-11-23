@@ -33,7 +33,6 @@ namespace GymFlow.InterfazUsuario
         private Label lblMetodoPagoTitulo;
         private ComboBox cmbMetodoPago;
         private Button btnRegistrar;
-        private Button btnAplicarSaldo;
         private ErrorProvider errorProvider;
 
         public FrmCobro(ClienteServicio clienteServicio, CobroServicio cobroServicio, CuentaCorrienteServicio cuentaCorrienteServicio)
@@ -60,7 +59,6 @@ namespace GymFlow.InterfazUsuario
             this.lblMetodoPagoTitulo = new Label();
             this.cmbMetodoPago = new ComboBox();
             this.btnRegistrar = new Button();
-            this.btnAplicarSaldo = new Button();
             this.errorProvider = new ErrorProvider(this);
 
             this.lblDni.Location = new Point(20, 23);
@@ -116,16 +114,10 @@ namespace GymFlow.InterfazUsuario
             }
 
             this.btnRegistrar.Location = new Point(20, 260);
-            this.btnRegistrar.Size = new Size(170, 32);
+            this.btnRegistrar.Size = new Size(380, 32);
             this.btnRegistrar.Text = "Registrar cobro";
             this.btnRegistrar.Enabled = false;
             this.btnRegistrar.Click += new EventHandler(this.btnRegistrar_Click);
-
-            this.btnAplicarSaldo.Location = new Point(200, 260);
-            this.btnAplicarSaldo.Size = new Size(200, 32);
-            this.btnAplicarSaldo.Text = "Aplicar saldo a favor";
-            this.btnAplicarSaldo.Enabled = false;
-            this.btnAplicarSaldo.Click += new EventHandler(this.btnAplicarSaldo_Click);
 
             this.Text = "Registrar cobro";
             this.Size = new Size(440, 345);
@@ -147,7 +139,6 @@ namespace GymFlow.InterfazUsuario
             this.Controls.Add(this.lblMetodoPagoTitulo);
             this.Controls.Add(this.cmbMetodoPago);
             this.Controls.Add(this.btnRegistrar);
-            this.Controls.Add(this.btnAplicarSaldo);
         }
 
         public void CargarClientePorDni(int dni)
@@ -174,7 +165,6 @@ namespace GymFlow.InterfazUsuario
             _clienteCargado = null;
             this.lblCliente.Text = string.Empty;
             this.btnRegistrar.Enabled = false;
-            this.btnAplicarSaldo.Enabled = false;
             this.lblSaldo.Text = string.Empty;
             this.lblPrecioCuota.Text = string.Empty;
             this.lblMinimo.Text = string.Empty;
@@ -221,6 +211,17 @@ namespace GymFlow.InterfazUsuario
             this._resumenCobroActual = resumen;
             this.lblSaldo.Text = "Saldo: " + resumen.Saldo.ToString("C2", CulturaMonetaria);
             this.lblPrecioCuota.Text = "Precio de cuota: " + resumen.PrecioCuota.ToString("C2", CulturaMonetaria);
+
+            if (resumen.TieneInconsistenciaContable)
+            {
+                this.lblMinimo.Text = "Mínimo exigible: Inconsistencia contable";
+                this.btnRegistrar.Enabled = false;
+                this.txtImporte.Enabled = false;
+                this.txtImporte.Text = string.Empty;
+                this.errorProvider.SetError(this.lblSaldo, "La cuenta presenta inconsistencias en los movimientos del período. Operaciones bloqueadas.");
+                return;
+            }
+
             this.lblMinimo.Text = "Mínimo exigible: " + resumen.MinimoExigible.ToString("C2", CulturaMonetaria);
             this.btnRegistrar.Enabled = resumen.MinimoExigible > 0m;
             this.txtImporte.Enabled = resumen.MinimoExigible > 0m;
@@ -228,66 +229,18 @@ namespace GymFlow.InterfazUsuario
                 ? resumen.MinimoExigible.ToString("C2", CulturaMonetaria)
                 : string.Empty;
             this.txtImporte.SelectAll();
-            this.btnAplicarSaldo.Enabled = resumen.TieneNotaVentaDelPeriodo
-                ? resumen.Saldo <= 0
-                : resumen.Saldo <= -resumen.PrecioCuota;
         }
 
-        private void btnAplicarSaldo_Click(object sender, EventArgs e)
+        private bool PuedeAplicarSaldoAFavor(ResumenCobro resumen)
         {
-            if (_clienteCargado == null)
+            if (resumen == null || resumen.TieneInconsistenciaContable)
             {
-                return;
+                return false;
             }
 
-            this.btnAplicarSaldo.Enabled = false;
-            this.Cursor = Cursors.WaitCursor;
-
-            try
-            {
-                ResumenCobro resumen = _resumenCobroActual;
-
-                if (resumen == null)
-                {
-                    MessageBox.Show("No hay información financiera disponible para aplicar el saldo a favor.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                string detalle = DescribirAplicacionSaldo(resumen);
-                if (MessageBox.Show(
-                    detalle + Environment.NewLine + Environment.NewLine + "¿Confirma la operación?",
-                    "Aplicar saldo a favor", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
-                {
-                    return;
-                }
-
-                if (!_cobroServicio.AplicarSaldoAFavor(_clienteCargado.Id))
-                {
-                    MessageBox.Show(DescribirRechazoAplicacionSaldo(resumen), "Aplicar saldo a favor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    MostrarResumenCobro();
-                    return;
-                }
-
-                MessageBox.Show("Saldo a favor aplicado. La cuota quedó activa durante 30 días.", "Aplicar saldo a favor", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                MostrarResumenCobro();
-                this.btnRegistrar.Enabled = false;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-                MessageBox.Show("Ocurrió un error al aplicar el saldo a favor.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                MostrarResumenCobro();
-            }
-            finally
-            {
-                this.Cursor = Cursors.Default;
-                if (this._resumenCobroActual != null)
-                {
-                    this.btnAplicarSaldo.Enabled = this._resumenCobroActual.TieneNotaVentaDelPeriodo
-                        ? this._resumenCobroActual.Saldo <= 0
-                        : this._resumenCobroActual.Saldo <= -this._resumenCobroActual.PrecioCuota;
-                }
-            }
+            string estado = ClienteServicio.DeterminarEstadoCuota(resumen.CuotaCliente, DateTime.Today);
+            bool estadoPermitido = estado == EstadosCliente.Pendiente || estado == EstadosCliente.Vencido;
+            return estadoPermitido && resumen.MinimoExigible == 0m;
         }
 
         private void btnRegistrar_Click(object sender, EventArgs e)
@@ -435,10 +388,18 @@ namespace GymFlow.InterfazUsuario
             string detalle = "Saldo favorable disponible: " + saldoAFavor.ToString("C2", CulturaMonetaria) + Environment.NewLine
                 + "Importe de la cuota: " + resumen.PrecioCuota.ToString("C2", CulturaMonetaria) + Environment.NewLine;
 
-            if (resumen.TieneNotaVentaDelPeriodo)
+            if (resumen.TieneNotaVentaDelPeriodo && resumen.NotaVentaContabilizada)
             {
                 return detalle
-                    + "La Nota de Venta del período ya existe. No se generará otra ni se registrará un movimiento adicional."
+                    + "La Nota de Venta del período ya está contabilizada. No se generará otra ni se registrará un movimiento adicional."
+                    + Environment.NewLine
+                    + "La cuota se activará durante 30 días.";
+            }
+
+            if (resumen.TieneNotaVentaDelPeriodo && !resumen.NotaVentaContabilizada)
+            {
+                return detalle
+                    + "La Nota de Venta del período ya existe pero no estaba contabilizada. Se registrará el débito pendiente correspondiente."
                     + Environment.NewLine
                     + "La cuota se activará durante 30 días.";
             }
@@ -490,7 +451,12 @@ namespace GymFlow.InterfazUsuario
 
         private string DescribirRechazoAplicacionSaldo(ResumenCobro resumen)
         {
-            if (resumen.MinimoExigible > 0m && resumen.Saldo > -resumen.PrecioCuota)
+            if (resumen != null && resumen.TieneInconsistenciaContable)
+            {
+                return "La cuenta presenta inconsistencias en los movimientos del período. Operaciones bloqueadas.";
+            }
+
+            if (resumen != null && resumen.MinimoExigible > 0m)
             {
                 return "El saldo favorable disponible no alcanza para cubrir la cuota.";
             }
