@@ -1,7 +1,9 @@
+using GymFlow.Abstracciones;
 using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 
@@ -285,6 +287,109 @@ namespace GymFlow.Tests
             Assert.AreEqual(2, datos.Inscripciones.Count);
             Assert.AreEqual(30, datos.Actividades[0].CapacidadMaxima);
             Assert.AreEqual(2, datos.Revertidas);
+        }
+
+        [TestMethod]
+        public void InscribirCliente_CuotaPendienteSinVencimiento_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            InscripcionServicio servicio = CrearServicio(datos);
+
+            bool resultado = servicio.InscribirCliente(1, 1);
+
+            Assert.IsFalse(resultado);
+            Assert.AreEqual(0, datos.Inscripciones.Count);
+        }
+
+        [TestMethod]
+        public void GetInscripcionesByCliente_DevuelveLasInscripcionesConActividad()
+        {
+            DatosEnMemoria datos = CrearConCuotaVigente();
+            Inscribir(datos, 1, 1);
+            InscripcionServicio servicio = CrearServicio(datos);
+
+            List<Inscripcion> inscripciones = servicio.GetInscripcionesByCliente(1);
+
+            Assert.AreEqual(1, inscripciones.Count);
+            Assert.IsNotNull(inscripciones[0].Actividad);
+            Assert.AreEqual("Yoga", inscripciones[0].Actividad.Nombre);
+        }
+
+        [TestMethod]
+        public void DarDeBajaInscripcionesDeMorosos_DeleteRetornaFalseSinExcepcion_RevierteYRegistraNoProcesado()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            Inscribir(datos, 1, 1);
+            InscripcionServicio servicio = new InscripcionServicio(
+                new CuotaClienteRepositorioEnMemoria(datos),
+                new ActividadRepositorioEnMemoria(datos),
+                new InscripcionRepositorioConFalloDeBorrado(datos),
+                new ClienteRepositorioEnMemoria(datos),
+                new TransaccionEnMemoria(datos));
+
+            ResultadoBajaMorosos resultado = servicio.DarDeBajaInscripcionesDeMorosos();
+
+            Assert.AreEqual(0, resultado.ClientesAfectados);
+            Assert.AreEqual(0, resultado.InscripcionesEliminadas);
+            Assert.AreEqual(1, resultado.NoProcesados.Count);
+            Assert.AreEqual(1, datos.Inscripciones.Count);
+            Assert.AreEqual(1, datos.Revertidas);
+        }
+
+        [TestMethod]
+        public void DarDeBajaInscripcionesDeMorosos_ClienteConVariasCuotasHistoricas_UsaLaDeMayorId()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 1, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(10), Estado = EstadosCliente.Activo });
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 7, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(15), Estado = EstadosCliente.Activo });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 8, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(-2), Estado = EstadosCliente.Vencido });
+            Inscribir(datos, 1, 1);
+            Inscribir(datos, 2, 1);
+            InscripcionServicio servicio = CrearServicio(datos);
+
+            ResultadoBajaMorosos resultado = servicio.DarDeBajaInscripcionesDeMorosos();
+
+            Assert.AreEqual(1, resultado.ClientesAfectados);
+            Assert.AreEqual(1, resultado.InscripcionesEliminadas);
+            Assert.AreEqual(1, datos.Inscripciones.Count);
+            Assert.AreEqual(1, datos.Inscripciones[0].ClienteId);
+        }
+
+        [TestMethod]
+        public void GetInscripcionesByClientes_ListaVaciaODuplicados_FiltraSinDuplicar()
+        {
+            DatosEnMemoria datos = CrearConCuotaVigente();
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
+            Inscribir(datos, 1, 1);
+            Inscribir(datos, 2, 1);
+            InscripcionRepositorioEnMemoria repo = new InscripcionRepositorioEnMemoria(datos);
+
+            Assert.AreEqual(0, repo.GetInscripcionesByClientes(null).Count);
+            Assert.AreEqual(0, repo.GetInscripcionesByClientes(new System.Collections.Generic.List<int>()).Count);
+
+            var resultado = repo.GetInscripcionesByClientes(new System.Collections.Generic.List<int> { 1, 1 });
+
+            Assert.AreEqual(1, resultado.Count);
+            Assert.AreEqual(1, resultado[0].ClienteId);
+        }
+
+        private class InscripcionRepositorioConFalloDeBorrado : IInscripcionRepositorio
+        {
+            private readonly InscripcionRepositorioEnMemoria _interno;
+
+            public InscripcionRepositorioConFalloDeBorrado(DatosEnMemoria datos)
+            {
+                _interno = new InscripcionRepositorioEnMemoria(datos);
+            }
+
+            public bool SaveInscripcion(Inscripcion inscripcion) => _interno.SaveInscripcion(inscripcion);
+            public List<Inscripcion> GetInscripcionesByActividad(int actId) => _interno.GetInscripcionesByActividad(actId);
+            public List<Inscripcion> GetInscripcionesByCliente(int cliId) => _interno.GetInscripcionesByCliente(cliId);
+            public List<Inscripcion> GetInscripcionesByClientes(System.Collections.Generic.List<int> clienteIds) => _interno.GetInscripcionesByClientes(clienteIds);
+            public bool DeleteInscripcion(int id) => false;
         }
     }
 }

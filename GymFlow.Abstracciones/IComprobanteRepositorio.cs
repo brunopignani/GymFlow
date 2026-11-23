@@ -15,5 +15,6 @@ namespace GymFlow.Abstracciones
         int ObtenerSiguienteNumeroNotaCredito();
         void BloquearNotaVentaParaAcreditar(int notaVentaId);
         decimal GetTotalNotasCreditoByNotaVenta(int notaVentaId);
+        bool ExisteComprobanteParaCuotas(List<int> cuotaClienteIds);
     }
 }

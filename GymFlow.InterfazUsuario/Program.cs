@@ -23,20 +23,19 @@ namespace GymFlow.InterfazUsuario
                 options.UseSqlServer(ConfiguracionBD.CadenaConexion));
 
             servicios.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
+            servicios.AddScoped<IPersonaRepositorio, PersonaRepositorio>();
             servicios.AddScoped<IClienteRepositorio, ClienteRepositorio>();
             servicios.AddScoped<IEmpleadoRepositorio, EmpleadoRepositorio>();
             servicios.AddScoped<IActividadRepositorio, ActividadRepositorio>();
             servicios.AddScoped<IInscripcionRepositorio, InscripcionRepositorio>();
             servicios.AddScoped<ICuotaClienteRepositorio, CuotaClienteRepositorio>();
             servicios.AddScoped<ICuotaRepositorio, CuotaRepositorio>();
-            servicios.AddScoped<IPagoRepositorio, PagoRepositorio>();
             servicios.AddScoped<ICuentaCorrienteRepositorio, CuentaCorrienteRepositorio>();
             servicios.AddScoped<IMovimientoRepositorio, MovimientoRepositorio>();
             servicios.AddScoped<ITipoMovimientoRepositorio, TipoMovimientoRepositorio>();
             servicios.AddScoped<IComprobanteRepositorio, ComprobanteRepositorio>();
             servicios.AddScoped<ITransaccionBD, TransaccionBD>();
 
-            servicios.AddScoped<PagoServicio>();
             servicios.AddScoped<InscripcionServicio>();
             servicios.AddScoped<ClienteServicio>();
             servicios.AddScoped<ActividadServicio>();
@@ -47,15 +46,11 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<UsuarioServicio>();
 
             servicios.AddTransient<FrmLogin>();
-            servicios.AddTransient<FrmRegistro>();
             servicios.AddTransient<FrmPrincipal>();
             servicios.AddTransient<FrmAutoingreso>();
             servicios.AddTransient<FrmRecepcion>();
             servicios.AddTransient<FrmClientes>();
-            servicios.AddTransient<FrmEstadoClientes>();
             servicios.AddTransient<FrmActividades>();
-            servicios.AddTransient<FrmClientesPorActividad>();
-            servicios.AddTransient<FrmDesinscripcion>();
             servicios.AddTransient<FrmBajaMorosos>();
             servicios.AddTransient<FrmCuentaCorriente>();
             servicios.AddTransient<FrmCobro>();
@@ -68,25 +63,29 @@ namespace GymFlow.InterfazUsuario
             opciones.ValidateScopes = true;
             opciones.ValidateOnBuild = true;
 
-            ServiceProvider proveedor = servicios.BuildServiceProvider(opciones);
-
-            using (IServiceScope alcance = proveedor.CreateScope())
+            using (ServiceProvider proveedor = servicios.BuildServiceProvider(opciones))
             {
                 while (true)
                 {
-                    FrmLogin login = alcance.ServiceProvider.GetRequiredService<FrmLogin>();
-
-                    if (login.ShowDialog() != DialogResult.OK)
+                    using (IServiceScope alcance = proveedor.CreateScope())
                     {
-                        break;
-                    }
+                        using (FrmLogin login = alcance.ServiceProvider.GetRequiredService<FrmLogin>())
+                        {
+                            if (login.ShowDialog() != DialogResult.OK)
+                            {
+                                break;
+                            }
+                        }
 
-                    FrmPrincipal principal = alcance.ServiceProvider.GetRequiredService<FrmPrincipal>();
-                    Application.Run(principal);
+                        using (FrmPrincipal principal = alcance.ServiceProvider.GetRequiredService<FrmPrincipal>())
+                        {
+                            Application.Run(principal);
+                        }
 
-                    if (SesionActual.EmpleadoActual != null)
-                    {
-                        break;
+                        if (SesionActual.EmpleadoActual != null)
+                        {
+                            break;
+                        }
                     }
                 }
             }

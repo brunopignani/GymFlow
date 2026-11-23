@@ -1,7 +1,6 @@
 using GymFlow.Abstracciones;
 using GymFlow.ContextoBD;
 using GymFlow.Dominio;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,6 +18,11 @@ namespace GymFlow.Repositorio
         public List<Cliente> GetAllClientes()
         {
             return _contexto.Clientes.ToList();
+        }
+
+        public Cliente GetClienteById(int id)
+        {
+            return _contexto.Clientes.FirstOrDefault(c => c.Id == id);
         }
 
         public Cliente GetClienteByDNI(int dni)

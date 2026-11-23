@@ -1,7 +1,6 @@
 using GymFlow.Abstracciones;
 using GymFlow.ContextoBD;
 using GymFlow.Dominio;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,6 +18,11 @@ namespace GymFlow.Repositorio
         public List<Actividad> GetAllActividades()
         {
             return _contexto.Actividades.ToList();
+        }
+
+        public Actividad GetActividadById(int id)
+        {
+            return _contexto.Actividades.FirstOrDefault(a => a.Id == id);
         }
 
         public bool AddActividad(Actividad actividad)

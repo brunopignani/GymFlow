@@ -982,5 +982,63 @@ namespace GymFlow.Tests
             Assert.AreEqual(vencimientoOriginal, datos.CuotasCliente[0].FechaVencimiento);
             Assert.AreEqual(estadoOriginal, datos.CuotasCliente[0].Estado);
         }
+
+        [TestMethod]
+        public void RegistrarCobro_MetodoPagoNoPermitido_RetornaFalseSinIniciarTransaccion()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            PrepararCuotaPendiente(datos);
+            CobroServicio servicio = CrearServicio(datos);
+
+            bool resultado = servicio.RegistrarCobro(1, 10, 1000m, "Cheque");
+
+            Assert.IsFalse(resultado);
+            Assert.AreEqual(0, datos.TransaccionesIniciadas);
+            Assert.AreEqual(0, datos.Comprobantes.Count);
+            Assert.AreEqual(0, datos.Movimientos.Count);
+        }
+
+        [TestMethod]
+        public void RegistrarCobro_MetodoPagoConEspaciosYMinusculas_NormalizaElNombreEnElRecibo()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            PrepararCuotaPendiente(datos);
+            CobroServicio servicio = CrearServicio(datos);
+
+            bool resultado = servicio.RegistrarCobro(1, 10, 1000m, "  tarjeta de débito  ");
+
+            Assert.IsTrue(resultado);
+            ReciboPago recibo = datos.Comprobantes.OfType<ReciboPago>().Single();
+            Assert.AreEqual("Tarjeta de Débito", recibo.MetodoPago);
+        }
+
+        [TestMethod]
+        public void RegistrarCobro_NotaVentaHuerfanaDelPeriodo_RegistraDebitoFaltanteYActivaCuota()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            PrepararCuotaPendiente(datos);
+            NotaVenta nv = new NotaVenta
+            {
+                Id = 1,
+                Numero = "NV-00000001",
+                FechaEmision = DateTime.Today,
+                Periodo = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
+                Total = 1000m,
+                CuotaClienteId = 5
+            };
+            datos.Comprobantes.Add(nv);
+            CobroServicio servicio = CrearServicio(datos);
+
+            bool resultado = servicio.RegistrarCobro(1, 10, 1000m, "Efectivo");
+
+            Assert.IsTrue(resultado);
+            Assert.AreEqual(1, datos.Comprobantes.OfType<NotaVenta>().Count());
+            Assert.AreEqual(1, datos.Comprobantes.OfType<ReciboPago>().Count());
+            Assert.AreEqual(1, datos.Movimientos.Count(m => m.ComprobanteId == nv.Id && m.TipoMovimientoId == 1 && m.Importe == 1000m));
+            Assert.AreEqual(1, datos.Movimientos.Count(m => m.TipoMovimientoId == 2 && m.Importe == 1000m));
+            Assert.AreEqual(0m, servicio.ObtenerResumenCobro(1).Saldo);
+            Assert.AreEqual(EstadosCliente.Activo, datos.CuotasCliente[0].Estado);
+            Assert.AreEqual(DateTime.Today.AddDays(30), datos.CuotasCliente[0].FechaVencimiento);
+        }
     }
 }

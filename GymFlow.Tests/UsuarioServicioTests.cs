@@ -12,7 +12,8 @@ namespace GymFlow.Tests
         {
             return new UsuarioServicio(
                 new UsuarioRepositorioEnMemoria(datos),
-                new EmpleadoRepositorioEnMemoria(datos));
+                new EmpleadoRepositorioEnMemoria(datos),
+                new PersonaRepositorioEnMemoria(datos));
         }
 
         private UsuarioServicio CrearConRecepcionista(DatosEnMemoria datos)
@@ -295,6 +296,86 @@ namespace GymFlow.Tests
 
             Assert.AreEqual(2, empleados.Count);
             Assert.AreEqual("marta", empleados.Single(e => e.Dni == 30111222).Usuario.Nombre);
+        }
+
+        [TestMethod]
+        public void RegistrarUsuario_DniRegistradoPorCliente_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearServicio(datos);
+
+            bool resultado = servicio.RegistrarUsuario(10111222, "Marta", "Gomez", "5551234", "marta", "Clave123");
+
+            Assert.IsFalse(resultado);
+            Assert.AreEqual(1, datos.Empleados.Count);
+            Assert.AreEqual(0, datos.Usuarios.Count);
+        }
+
+        [TestMethod]
+        public void ModificarUsuario_ConservaSuPropioDni_RetornaTrue()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearConRecepcionista(datos);
+            int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
+
+            bool resultado = servicio.ModificarUsuario(empleadoId, 30111222, "Marta Elena", "Gomez", "5551234", "marta");
+
+            Assert.IsTrue(resultado);
+            Assert.AreEqual("Marta Elena", datos.Empleados.Single(e => e.Id == empleadoId).Nombre);
+        }
+
+        [TestMethod]
+        public void ModificarUsuario_DniRegistradoPorOtroEmpleado_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearConRecepcionista(datos);
+            servicio.RegistrarUsuario(30222333, "Juan", "Perez", "5559876", "juan", "Clave123");
+            int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
+
+            bool resultado = servicio.ModificarUsuario(empleadoId, 30222333, "Marta", "Gomez", "5551234", "marta");
+
+            Assert.IsFalse(resultado);
+            Assert.AreEqual(30111222, datos.Empleados.Single(e => e.Id == empleadoId).Dni);
+        }
+
+        [TestMethod]
+        public void ModificarUsuario_DniRegistradoPorCliente_RetornaFalse()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearConRecepcionista(datos);
+            int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
+
+            bool resultado = servicio.ModificarUsuario(empleadoId, 10111222, "Marta", "Gomez", "5551234", "marta");
+
+            Assert.IsFalse(resultado);
+            Assert.AreEqual(30111222, datos.Empleados.Single(e => e.Id == empleadoId).Dni);
+        }
+
+        [TestMethod]
+        public void ModificarUsuario_ClaveVaciaONula_ConservaLaClaveActual()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearConRecepcionista(datos);
+            int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
+
+            bool resultado = servicio.ModificarUsuario(empleadoId, 30111222, "Marta", "Gomez", "5551234", "marta", "");
+
+            Assert.IsTrue(resultado);
+            Assert.IsNotNull(servicio.Login("marta", "Clave123"));
+        }
+
+        [TestMethod]
+        public void ModificarUsuario_ConClaveNueva_ActualizaLaClaveHasheada()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            UsuarioServicio servicio = CrearConRecepcionista(datos);
+            int empleadoId = datos.Empleados.Single(e => e.Dni == 30111222).Id;
+
+            bool resultado = servicio.ModificarUsuario(empleadoId, 30111222, "Marta", "Gomez", "5551234", "marta", "NuevaClave456");
+
+            Assert.IsTrue(resultado);
+            Assert.IsNull(servicio.Login("marta", "Clave123"));
+            Assert.IsNotNull(servicio.Login("marta", "NuevaClave456"));
         }
     }
 }

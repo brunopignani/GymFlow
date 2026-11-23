@@ -8,6 +8,7 @@ namespace GymFlow.Abstracciones
         bool SaveInscripcion(Inscripcion inscripcion);
         List<Inscripcion> GetInscripcionesByActividad(int actId);
         List<Inscripcion> GetInscripcionesByCliente(int cliId);
+        List<Inscripcion> GetInscripcionesByClientes(List<int> clienteIds);
         bool DeleteInscripcion(int id);
     }
 }

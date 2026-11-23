@@ -17,7 +17,6 @@ namespace GymFlow.ContextoBD
         public DbSet<Cuota> Cuotas { get; set; }
         public DbSet<CuotaCliente> CuotasCliente { get; set; }
         public DbSet<Inscripcion> Inscripciones { get; set; }
-        public DbSet<Pago> Pagos { get; set; }
         public DbSet<CuentaCorriente> CuentasCorriente { get; set; }
         public DbSet<Movimiento> Movimientos { get; set; }
         public DbSet<TipoMovimiento> TiposMovimiento { get; set; }
@@ -37,10 +36,7 @@ namespace GymFlow.ContextoBD
             modelBuilder.Entity<TipoMovimiento>().ToTable("T_TIPO_MOVIMIENTO");
             modelBuilder.Entity<Comprobante>().UseTptMappingStrategy().ToTable("T_COMPROBANTE");
 
-            modelBuilder.Entity<Cliente>().Ignore(c => c.Pagos);
-
             modelBuilder.Entity<Cuota>().Property(c => c.Precio).HasPrecision(18, 2);
-            modelBuilder.Entity<Pago>().Property(p => p.Monto).HasPrecision(18, 2);
             modelBuilder.Entity<Movimiento>().Property(m => m.Importe).HasPrecision(18, 2);
             modelBuilder.Entity<Comprobante>().Property(c => c.Total).HasPrecision(18, 2);
             modelBuilder.Entity<Comprobante>().Property(c => c.Numero).HasMaxLength(11).IsRequired();
@@ -55,6 +51,10 @@ namespace GymFlow.ContextoBD
             modelBuilder.Entity<ReciboPago>().ToTable("T_RECIBO_PAGO");
             modelBuilder.Entity<NotaCredito>().ToTable("T_NOTA_CREDITO");
             modelBuilder.Entity<NotaVenta>().ToTable("T_NOTA_VENTA");
+
+            modelBuilder.Entity<Persona>()
+                .HasIndex(p => p.Dni)
+                .IsUnique();
 
             modelBuilder.Entity<Persona>()
                 .HasOne(p => p.Usuario)
@@ -81,17 +81,6 @@ namespace GymFlow.ContextoBD
                 .HasOne(i => i.Actividad)
                 .WithMany(a => a.Inscripciones)
                 .HasForeignKey(i => i.ActividadId);
-
-            modelBuilder.Entity<Pago>()
-                .HasOne(p => p.Empleado)
-                .WithMany(e => e.PagosRegistrados)
-                .HasForeignKey(p => p.EmpleadoId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Pago>()
-                .HasOne(p => p.CuotaCliente)
-                .WithMany()
-                .HasForeignKey(p => p.CuotaClienteId);
 
             modelBuilder.Entity<CuentaCorriente>()
                 .HasOne(cc => cc.Cliente)

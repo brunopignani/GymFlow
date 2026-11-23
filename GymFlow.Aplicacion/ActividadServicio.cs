@@ -107,7 +107,7 @@ namespace GymFlow.Aplicacion
 
         private bool Existe(int id)
         {
-            return _actividadRepositorio.GetAllActividades().Exists(a => a.Id == id);
+            return _actividadRepositorio.GetActividadById(id) != null;
         }
     }
 }

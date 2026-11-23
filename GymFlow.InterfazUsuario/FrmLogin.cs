@@ -1,6 +1,5 @@
 using GymFlow.Aplicacion;
 using GymFlow.Dominio;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -11,19 +10,16 @@ namespace GymFlow.InterfazUsuario
     public class FrmLogin : Form
     {
         private readonly UsuarioServicio _usuarioServicio;
-        private readonly IServiceProvider _serviceProvider;
 
         private Label lblUsuario;
         private TextBox txtUsuario;
         private Label lblClave;
         private TextBox txtClave;
         private Button btnIngresar;
-        private Button btnRegistrarse;
 
-        public FrmLogin(UsuarioServicio usuarioServicio, IServiceProvider serviceProvider)
+        public FrmLogin(UsuarioServicio usuarioServicio)
         {
             _usuarioServicio = usuarioServicio;
-            _serviceProvider = serviceProvider;
 
             InitializeComponent();
         }
@@ -35,7 +31,6 @@ namespace GymFlow.InterfazUsuario
             this.lblClave = new Label();
             this.txtClave = new TextBox();
             this.btnIngresar = new Button();
-            this.btnRegistrarse = new Button();
 
             this.lblUsuario.Location = new Point(20, 23);
             this.lblUsuario.Size = new Size(70, 20);
@@ -53,14 +48,9 @@ namespace GymFlow.InterfazUsuario
             this.txtClave.UseSystemPasswordChar = true;
 
             this.btnIngresar.Location = new Point(100, 95);
-            this.btnIngresar.Size = new Size(85, 30);
+            this.btnIngresar.Size = new Size(180, 30);
             this.btnIngresar.Text = "Ingresar";
             this.btnIngresar.Click += new EventHandler(this.btnIngresar_Click);
-
-            this.btnRegistrarse.Location = new Point(195, 95);
-            this.btnRegistrarse.Size = new Size(85, 30);
-            this.btnRegistrarse.Text = "Registrarse";
-            this.btnRegistrarse.Click += new EventHandler(this.btnRegistrarse_Click);
 
             this.Text = "GymFlow - Iniciar sesión";
             this.Size = new Size(320, 200);
@@ -74,7 +64,6 @@ namespace GymFlow.InterfazUsuario
             this.Controls.Add(this.lblClave);
             this.Controls.Add(this.txtClave);
             this.Controls.Add(this.btnIngresar);
-            this.Controls.Add(this.btnRegistrarse);
         }
 
         private void btnIngresar_Click(object sender, EventArgs e)
@@ -98,20 +87,11 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.ToString());
-                string detalle = ex.InnerException != null ? ex.Message + Environment.NewLine + ex.InnerException.Message : ex.Message;
-                MessageBox.Show("No se pudo iniciar sesión:" + Environment.NewLine + detalle, "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Ocurrió un error al iniciar sesión. Intente nuevamente.", "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 this.btnIngresar.Enabled = true;
-            }
-        }
-
-        private void btnRegistrarse_Click(object sender, EventArgs e)
-        {
-            using (FrmRegistro formulario = _serviceProvider.GetRequiredService<FrmRegistro>())
-            {
-                formulario.ShowDialog(this);
             }
         }
     }

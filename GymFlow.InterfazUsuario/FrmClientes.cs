@@ -307,7 +307,7 @@ namespace GymFlow.InterfazUsuario
             {
                 if (!_clienteServicio.AddCliente(nuevo))
                 {
-                    MessageBox.Show("No se pudo dar de alta. Complete DNI, nombre y apellido, y verifique que el DNI no esté repetido.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("No se pudo dar de alta. Complete DNI, nombre y apellido, y verifique que el DNI no esté registrado en clientes ni en empleados.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -316,6 +316,12 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.ToString());
+                if (ConcurrenciaUI.EsConflictoDeUnicidad(ex))
+                {
+                    MessageBox.Show("Ya existe una persona registrada con ese DNI.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 MessageBox.Show("Ocurrió un error al guardar el cliente.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -343,7 +349,7 @@ namespace GymFlow.InterfazUsuario
             {
                 if (!_clienteServicio.UpdateCliente(copia))
                 {
-                    MessageBox.Show("No se pudo modificar. Complete DNI, nombre y apellido, y verifique que el DNI no pertenezca a otro cliente.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("No se pudo modificar. Complete DNI, nombre y apellido, y verifique que el DNI no pertenezca a otra persona.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -352,6 +358,12 @@ namespace GymFlow.InterfazUsuario
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.ToString());
+                if (ConcurrenciaUI.EsConflictoDeUnicidad(ex))
+                {
+                    MessageBox.Show("Ya existe otra persona registrada con ese DNI.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 MessageBox.Show("Ocurrió un error al modificar el cliente.", "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -392,9 +404,7 @@ namespace GymFlow.InterfazUsuario
                                         ? "La baja está bloqueada porque la cuenta corriente tiene movimientos."
                                         : resultado == ResultadoBajaCliente.Comprobantes
                                             ? "La baja está bloqueada porque el cliente tiene comprobantes financieros."
-                                            : resultado == ResultadoBajaCliente.Pagos
-                                                ? "La baja está bloqueada porque el cliente tiene pagos registrados."
-                                                : "La baja está bloqueada porque el cliente tiene un usuario asociado.";
+                                            : "La baja está bloqueada porque el cliente tiene un usuario asociado.";
 
                     MessageBox.Show(mensaje, "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
