@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Data;
@@ -16,6 +16,8 @@ namespace GymFlow.Aplicacion
         private readonly IAjusteCuentaRepositorio _ajusteCuentaRepositorio;
         private readonly ITipoMovimientoRepositorio _tipoMovimientoRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public AjusteCuentaServicio(
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
@@ -23,8 +25,10 @@ namespace GymFlow.Aplicacion
             IMovimientoRepositorio movimientoRepositorio,
             IAjusteCuentaRepositorio ajusteCuentaRepositorio,
             ITipoMovimientoRepositorio tipoMovimientoRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _empleadoRepositorio = empleadoRepositorio;
             _movimientoRepositorio = movimientoRepositorio;
@@ -45,6 +49,11 @@ namespace GymFlow.Aplicacion
 
         public bool RegistrarAjuste(int clienteId, int empleadoId, string tipoMovimiento, decimal importe, string motivo)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.AjusteCuentaRegistrar))
+            {
+                return false;
+            }
+
             if (!EsTipoAjusteValido(tipoMovimiento) || !EsImporteValido(importe) || string.IsNullOrWhiteSpace(motivo))
             {
                 return false;

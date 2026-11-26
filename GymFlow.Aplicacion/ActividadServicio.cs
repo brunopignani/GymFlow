@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -13,12 +13,16 @@ namespace GymFlow.Aplicacion
         private readonly IActividadRepositorio _actividadRepositorio;
         private readonly IInscripcionRepositorio _inscripcionRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public ActividadServicio(
             IActividadRepositorio actividadRepositorio,
             IInscripcionRepositorio inscripcionRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _actividadRepositorio = actividadRepositorio;
             _inscripcionRepositorio = inscripcionRepositorio;
             _transaccion = transaccion;
@@ -26,11 +30,21 @@ namespace GymFlow.Aplicacion
 
         public List<Actividad> GetAllActividades()
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ActividadesGestionar))
+            {
+                return new List<Actividad>();
+            }
+
             return _actividadRepositorio.GetAllActividades();
         }
 
         public bool AddActividad(Actividad actividad)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ActividadesGestionar))
+            {
+                return false;
+            }
+
             if (actividad == null || string.IsNullOrWhiteSpace(actividad.Nombre))
             {
                 return false;
@@ -46,6 +60,11 @@ namespace GymFlow.Aplicacion
 
         public bool UpdateActividad(Actividad actividad)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ActividadesGestionar))
+            {
+                return false;
+            }
+
             if (actividad == null || string.IsNullOrWhiteSpace(actividad.Nombre))
             {
                 return false;
@@ -92,6 +111,11 @@ namespace GymFlow.Aplicacion
 
         public bool DeleteActividad(int id)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ActividadesGestionar))
+            {
+                return false;
+            }
+
             if (!Existe(id))
             {
                 return false;

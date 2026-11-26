@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using GymFlow.Dominio;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,12 @@ namespace GymFlow.ContextoBD
         public DbSet<NotaCredito> NotasCredito { get; set; }
         public DbSet<NotaVenta> NotasVenta { get; set; }
         public DbSet<AjusteCuenta> AjustesCuenta { get; set; }
+        public DbSet<Modulo> Modulos { get; set; }
+        public DbSet<Formulario> Formularios { get; set; }
+        public DbSet<Accion> Acciones { get; set; }
+        public DbSet<Grupo> Grupos { get; set; }
+        public DbSet<AuditoriaSesion> AuditoriasSesion { get; set; }
+        public DbSet<AuditoriaCliente> AuditoriasCliente { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -137,6 +144,132 @@ namespace GymFlow.ContextoBD
 
             modelBuilder.Entity<NotaCredito>()
                 .HasIndex(nc => nc.NotaVentaId);
+
+            ConfigurarSeguridad(modelBuilder);
+            ConfigurarAuditoria(modelBuilder);
+        }
+
+        private static void ConfigurarSeguridad(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Ignore<ComponentePermiso>();
+
+            modelBuilder.Entity<Modulo>(e =>
+            {
+                e.ToTable("T_MODULO");
+                e.HasKey(m => m.Id);
+                e.Property(m => m.Nombre).HasMaxLength(100).IsRequired();
+                e.HasIndex(m => m.Nombre).IsUnique();
+            });
+
+            modelBuilder.Entity<Formulario>(e =>
+            {
+                e.ToTable("T_FORMULARIO");
+                e.HasKey(f => f.Id);
+                e.Property(f => f.Nombre).HasMaxLength(100).IsRequired();
+                e.HasOne(f => f.Modulo)
+                    .WithMany(m => m.Formularios)
+                    .HasForeignKey(f => f.ModuloId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasIndex(f => new { f.ModuloId, f.Nombre }).IsUnique();
+            });
+
+            modelBuilder.Entity<Accion>(e =>
+            {
+                e.ToTable("T_ACCION");
+                e.HasKey(a => a.Id);
+                e.Property(a => a.Codigo).HasMaxLength(80).IsRequired();
+                e.Property(a => a.Nombre).HasMaxLength(150).IsRequired();
+                e.HasIndex(a => a.Codigo).IsUnique();
+                e.HasOne(a => a.Formulario)
+                    .WithMany(f => f.Acciones)
+                    .HasForeignKey(a => a.FormularioId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Grupo>(e =>
+            {
+                e.ToTable("T_GRUPO");
+                e.HasKey(g => g.Id);
+                e.Property(g => g.Nombre).HasMaxLength(100).IsRequired();
+                e.Property(g => g.Descripcion).HasMaxLength(250);
+                e.Property(g => g.Estado).HasMaxLength(20).IsRequired();
+                e.HasIndex(g => g.Nombre).IsUnique();
+
+                e.HasMany(g => g.Acciones)
+                    .WithMany()
+                    .UsingEntity<Dictionary<string, object>>(
+                        "T_GRUPO_ACCION",
+                        r => r.HasOne<Accion>().WithMany().HasForeignKey("AccionId").OnDelete(DeleteBehavior.Restrict),
+                        l => l.HasOne<Grupo>().WithMany().HasForeignKey("GrupoId").OnDelete(DeleteBehavior.Cascade),
+                        j => j.HasKey("GrupoId", "AccionId"));
+
+                e.HasMany(g => g.Subgrupos)
+                    .WithMany()
+                    .UsingEntity<Dictionary<string, object>>(
+                        "T_GRUPO_GRUPO",
+                        r => r.HasOne<Grupo>().WithMany().HasForeignKey("GrupoHijoId").OnDelete(DeleteBehavior.NoAction),
+                        l => l.HasOne<Grupo>().WithMany().HasForeignKey("GrupoPadreId").OnDelete(DeleteBehavior.NoAction),
+                        j =>
+                        {
+                            j.HasKey("GrupoPadreId", "GrupoHijoId");
+                            j.ToTable("T_GRUPO_GRUPO", t => t.HasCheckConstraint("CK_T_GRUPO_GRUPO_NoAutoReferencia", "[GrupoPadreId] <> [GrupoHijoId]"));
+                        });
+            });
+
+            modelBuilder.Entity<Usuario>(e =>
+            {
+                e.HasMany(u => u.Grupos)
+                    .WithMany()
+                    .UsingEntity<Dictionary<string, object>>(
+                        "T_USUARIO_GRUPO",
+                        r => r.HasOne<Grupo>().WithMany().HasForeignKey("GrupoId").OnDelete(DeleteBehavior.Restrict),
+                        l => l.HasOne<Usuario>().WithMany().HasForeignKey("UsuarioId").OnDelete(DeleteBehavior.Restrict),
+                        j => j.HasKey("UsuarioId", "GrupoId"));
+
+                e.HasMany(u => u.AccionesDirectas)
+                    .WithMany()
+                    .UsingEntity<Dictionary<string, object>>(
+                        "T_USUARIO_ACCION",
+                        r => r.HasOne<Accion>().WithMany().HasForeignKey("AccionId").OnDelete(DeleteBehavior.Restrict),
+                        l => l.HasOne<Usuario>().WithMany().HasForeignKey("UsuarioId").OnDelete(DeleteBehavior.Restrict),
+                        j => j.HasKey("UsuarioId", "AccionId"));
+            });
+        }
+
+        private static void ConfigurarAuditoria(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<AuditoriaSesion>(e =>
+            {
+                e.ToTable("T_AUDITORIA_SESION");
+                e.HasKey(a => a.Id);
+                e.Property(a => a.FechaHora).IsRequired();
+                e.Property(a => a.TipoEvento).HasMaxLength(20).IsRequired();
+                e.Property(a => a.NombreUsuario).HasMaxLength(100).IsRequired();
+                e.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(a => a.UsuarioId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasIndex(a => a.FechaHora);
+                e.HasIndex(a => a.UsuarioId);
+            });
+
+            modelBuilder.Entity<AuditoriaCliente>(e =>
+            {
+                e.ToTable("T_AUDITORIA_CLIENTE");
+                e.HasKey(a => a.Id);
+                e.Property(a => a.FechaHora).IsRequired();
+                e.Property(a => a.Operacion).HasMaxLength(20).IsRequired();
+                e.Property(a => a.NombreUsuario).HasMaxLength(100).IsRequired();
+                e.Property(a => a.ValoresAnteriores).HasColumnType("nvarchar(max)").IsRequired(false);
+                e.Property(a => a.ValoresNuevos).HasColumnType("nvarchar(max)").IsRequired(false);
+                e.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(a => a.UsuarioId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasIndex(a => a.FechaHora);
+                e.HasIndex(a => a.ClienteId);
+                e.HasIndex(a => a.DniCliente);
+            });
         }
     }
 }

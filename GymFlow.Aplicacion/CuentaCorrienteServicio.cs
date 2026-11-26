@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -9,15 +9,24 @@ namespace GymFlow.Aplicacion
     {
         private readonly ICuentaCorrienteRepositorio _cuentaCorrienteRepositorio;
         private readonly IMovimientoRepositorio _movimientoRepositorio;
+        private readonly IContextoUsuarioActual _contextoUsuario;
 
-        public CuentaCorrienteServicio(ICuentaCorrienteRepositorio cuentaCorrienteRepositorio, IMovimientoRepositorio movimientoRepositorio)
+
+        public CuentaCorrienteServicio(ICuentaCorrienteRepositorio cuentaCorrienteRepositorio, IMovimientoRepositorio movimientoRepositorio,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _movimientoRepositorio = movimientoRepositorio;
         }
 
         public ResumenCuentaCorriente ConsultarCuentaCorriente(int clienteId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.CuentaCorrienteVer))
+            {
+                return null;
+            }
+
             CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
 
             if (cuenta == null)

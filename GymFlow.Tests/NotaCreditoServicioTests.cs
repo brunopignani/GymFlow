@@ -17,7 +17,7 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new ComprobanteRepositorioEnMemoria(datos),
                 new TipoMovimientoRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private DatosEnMemoria CrearConNotaVenta()

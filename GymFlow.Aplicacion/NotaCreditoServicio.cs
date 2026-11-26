@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -14,14 +14,18 @@ namespace GymFlow.Aplicacion
         private readonly IComprobanteRepositorio _comprobanteRepositorio;
         private readonly ITipoMovimientoRepositorio _tipoMovimientoRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public NotaCreditoServicio(
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
             IMovimientoRepositorio movimientoRepositorio,
             IComprobanteRepositorio comprobanteRepositorio,
             ITipoMovimientoRepositorio tipoMovimientoRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _movimientoRepositorio = movimientoRepositorio;
             _comprobanteRepositorio = comprobanteRepositorio;
@@ -31,6 +35,11 @@ namespace GymFlow.Aplicacion
 
         public bool EmitirNotaCredito(int clienteId, int comprobanteId, decimal importe, string motivo)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.NotaCreditoEmitir))
+            {
+                return false;
+            }
+
             if (importe <= 0 || string.IsNullOrWhiteSpace(motivo))
             {
                 return false;
@@ -113,6 +122,11 @@ namespace GymFlow.Aplicacion
 
         public decimal ObtenerImporteAcreditable(int clienteId, int notaVentaId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.NotaCreditoEmitir))
+            {
+                return 0m;
+            }
+
             CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
 
             if (cuenta == null)

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -17,6 +17,8 @@
     <ProjectReference Include="..\GymFlow.Abstracciones\GymFlow.Abstracciones.csproj" />
     <ProjectReference Include="..\GymFlow.Dominio\GymFlow.Dominio.csproj" />
     <ProjectReference Include="..\GymFlow.Aplicacion\GymFlow.Aplicacion.csproj" />
+    <ProjectReference Include="..\GymFlow.ContextoBD\GymFlow.ContextoBD.csproj" />
   </ItemGroup>
 
 </Project>
+

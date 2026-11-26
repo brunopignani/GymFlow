@@ -489,7 +489,9 @@ namespace GymFlow.InterfazUsuario
                                         ? "La baja está bloqueada porque la cuenta corriente tiene movimientos."
                                         : resultado == ResultadoBajaCliente.Comprobantes
                                             ? "La baja está bloqueada porque el cliente tiene comprobantes financieros."
-                                            : "La baja está bloqueada porque el cliente tiene un usuario asociado.";
+                                            : resultado == ResultadoBajaCliente.SinPermiso
+                                                ? "No posee permisos para dar de baja clientes."
+                                                : "La baja está bloqueada porque el cliente tiene un usuario asociado.";
 
                     MessageBox.Show(mensaje, "Gestionar clientes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;

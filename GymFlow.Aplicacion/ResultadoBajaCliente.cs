@@ -1,4 +1,4 @@
-namespace GymFlow.Aplicacion
+﻿namespace GymFlow.Aplicacion
 {
     public enum ResultadoBajaCliente
     {
@@ -9,6 +9,7 @@ namespace GymFlow.Aplicacion
         CuentaCorrienteInexistente,
         Movimientos,
         Comprobantes,
-        UsuarioAsociado
+        UsuarioAsociado,
+        SinPermiso
     }
 }

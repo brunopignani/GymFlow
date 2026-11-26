@@ -28,7 +28,7 @@ namespace GymFlow.Tests
                     new MovimientoRepositorioEnMemoria(datos),
                     new ComprobanteRepositorioEnMemoria(datos),
                     new TipoMovimientoRepositorioEnMemoria(datos),
-                    new TransaccionEnMemoria(datos)));
+                    new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos()), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private DebitoMensualServicio CrearDebitoServicio(DatosEnMemoria datos)
@@ -41,7 +41,7 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new ComprobanteRepositorioEnMemoria(datos),
                 new TipoMovimientoRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         [TestMethod]
@@ -780,7 +780,7 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new AjusteCuentaRepositorioEnMemoria(datos),
                 new TipoMovimientoRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
     }
 }

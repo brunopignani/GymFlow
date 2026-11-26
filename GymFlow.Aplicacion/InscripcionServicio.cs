@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -15,14 +15,18 @@ namespace GymFlow.Aplicacion
         private readonly IInscripcionRepositorio _inscripcionRepositorio;
         private readonly IClienteRepositorio _clienteRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public InscripcionServicio(
             ICuotaClienteRepositorio cuotaClienteRepositorio,
             IActividadRepositorio actividadRepositorio,
             IInscripcionRepositorio inscripcionRepositorio,
             IClienteRepositorio clienteRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
             _actividadRepositorio = actividadRepositorio;
             _inscripcionRepositorio = inscripcionRepositorio;
@@ -32,6 +36,11 @@ namespace GymFlow.Aplicacion
 
         public bool InscribirCliente(int clienteId, int actividadId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.InscripcionesGestionar))
+            {
+                return false;
+            }
+
             CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
 
             if (cuotaCliente == null || !cuotaCliente.FechaVencimiento.HasValue || cuotaCliente.FechaVencimiento.Value < DateTime.Today)
@@ -89,6 +98,11 @@ namespace GymFlow.Aplicacion
 
         public bool DesinscribirCliente(int clienteId, int actividadId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.InscripcionesGestionar))
+            {
+                return false;
+            }
+
             try
             {
                 _transaccion.IniciarTransaccion(IsolationLevel.Serializable);
@@ -120,16 +134,31 @@ namespace GymFlow.Aplicacion
 
         public List<Inscripcion> GetInscripcionesByActividad(int actId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.InscripcionesGestionar))
+            {
+                return new List<Inscripcion>();
+            }
+
             return _inscripcionRepositorio.GetInscripcionesByActividad(actId);
         }
 
         public List<Inscripcion> GetInscripcionesByCliente(int cliId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.InscripcionesGestionar))
+            {
+                return new List<Inscripcion>();
+            }
+
             return _inscripcionRepositorio.GetInscripcionesByCliente(cliId);
         }
 
         public ResultadoBajaMorosos DarDeBajaInscripcionesDeMorosos()
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.MorososBaja))
+            {
+                return new ResultadoBajaMorosos();
+            }
+
             ResultadoBajaMorosos resultado = new ResultadoBajaMorosos();
             DateTime hoy = DateTime.Today;
             Dictionary<int, CuotaCliente> cuotasActivas = _cuotaClienteRepositorio.GetCuotasActivasPorCliente();

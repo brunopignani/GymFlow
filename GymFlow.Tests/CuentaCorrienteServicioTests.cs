@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -12,7 +12,7 @@ namespace GymFlow.Tests
         {
             return new CuentaCorrienteServicio(
                 new CuentaCorrienteRepositorioEnMemoria(datos),
-                new MovimientoRepositorioEnMemoria(datos));
+                new MovimientoRepositorioEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         [TestMethod]

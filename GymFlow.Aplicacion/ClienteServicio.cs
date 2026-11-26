@@ -1,14 +1,21 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 
 namespace GymFlow.Aplicacion
 {
     public class ClienteServicio
     {
+        private static readonly JsonSerializerOptions OpcionesJson = new JsonSerializerOptions
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         private readonly IClienteRepositorio _clienteRepositorio;
         private readonly IPersonaRepositorio _personaRepositorio;
         private readonly ICuotaClienteRepositorio _cuotaClienteRepositorio;
@@ -17,7 +24,10 @@ namespace GymFlow.Aplicacion
         private readonly IMovimientoRepositorio _movimientoRepositorio;
         private readonly ICuotaRepositorio _cuotaRepositorio;
         private readonly IComprobanteRepositorio _comprobanteRepositorio;
+        private readonly IAuditoriaRepositorio _auditoriaRepositorio;
         private readonly ITransaccionBD _transaccionBD;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public ClienteServicio(
             IClienteRepositorio clienteRepositorio,
@@ -28,8 +38,11 @@ namespace GymFlow.Aplicacion
             IMovimientoRepositorio movimientoRepositorio,
             ICuotaRepositorio cuotaRepositorio,
             IComprobanteRepositorio comprobanteRepositorio,
-            ITransaccionBD transaccionBD)
+            IAuditoriaRepositorio auditoriaRepositorio,
+            ITransaccionBD transaccionBD,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _clienteRepositorio = clienteRepositorio;
             _personaRepositorio = personaRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
@@ -38,11 +51,17 @@ namespace GymFlow.Aplicacion
             _movimientoRepositorio = movimientoRepositorio;
             _cuotaRepositorio = cuotaRepositorio;
             _comprobanteRepositorio = comprobanteRepositorio;
+            _auditoriaRepositorio = auditoriaRepositorio;
             _transaccionBD = transaccionBD;
         }
 
         public ResultadoAutoingreso ValidarAutoingreso(int dni)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.AutoingresoUsar))
+            {
+                return new ResultadoAutoingreso();
+            }
+
             Cliente cliente = _clienteRepositorio.GetClienteByDNI(dni);
 
             if (cliente == null)
@@ -82,16 +101,31 @@ namespace GymFlow.Aplicacion
 
         public List<Cliente> GetAllClientes()
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return new List<Cliente>();
+            }
+
             return _clienteRepositorio.GetAllClientes();
         }
 
         public Cliente GetClienteByDNI(int dni)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return null;
+            }
+
             return _clienteRepositorio.GetClienteByDNI(dni);
         }
 
         public bool AddCliente(Cliente cliente)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return false;
+            }
+
             if (!TieneDatosValidos(cliente))
             {
                 return false;
@@ -109,22 +143,57 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            cliente.Cuenta = new CuentaCorriente();
-            cliente.CuotasCliente = new List<CuotaCliente>
-            {
-                new CuotaCliente
-                {
-                    CuotaId = cuotas[0].Id,
-                    FechaVencimiento = null,
-                    Estado = null
-                }
-            };
+            _transaccionBD.IniciarTransaccion();
 
-            return _clienteRepositorio.AddCliente(cliente);
+            try
+            {
+                cliente.Cuenta = new CuentaCorriente();
+                cliente.CuotasCliente = new List<CuotaCliente>
+                {
+                    new CuotaCliente
+                    {
+                        CuotaId = cuotas[0].Id,
+                        FechaVencimiento = null,
+                        Estado = null
+                    }
+                };
+
+                if (!_clienteRepositorio.AddCliente(cliente))
+                {
+                    _transaccionBD.RevertirTransaccion();
+                    return false;
+                }
+
+                string valoresNuevos = SerializarSnapshot(cliente.Dni, cliente.Nombre, cliente.Apellido, cliente.Telefono);
+                AuditoriaCliente auditoria = CrearAuditoriaCliente(
+                    OperacionesAuditoria.Alta,
+                    cliente.Id,
+                    cliente.Dni,
+                    null,
+                    valoresNuevos);
+
+                if (!_auditoriaRepositorio.RegistrarCliente(auditoria))
+                {
+                    throw new InvalidOperationException("No se pudo registrar la auditoría de alta del cliente.");
+                }
+
+                _transaccionBD.ConfirmarTransaccion();
+                return true;
+            }
+            catch
+            {
+                _transaccionBD.RevertirTransaccion();
+                throw;
+            }
         }
 
         public bool UpdateCliente(Cliente cliente)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return false;
+            }
+
             if (!TieneDatosValidos(cliente))
             {
                 return false;
@@ -135,16 +204,78 @@ namespace GymFlow.Aplicacion
                 return false;
             }
 
-            return _clienteRepositorio.UpdateCliente(cliente);
+            _transaccionBD.IniciarTransaccion();
+
+            try
+            {
+                Cliente actual = _clienteRepositorio.GetClienteById(cliente.Id);
+
+                if (actual == null)
+                {
+                    _transaccionBD.RevertirTransaccion();
+                    return false;
+                }
+
+                int dniAnterior = actual.Dni;
+                string nombreAnterior = actual.Nombre;
+                string apellidoAnterior = actual.Apellido;
+                string telefonoAnterior = actual.Telefono;
+
+                bool huboCambios = dniAnterior != cliente.Dni
+                    || !string.Equals(nombreAnterior, cliente.Nombre, StringComparison.Ordinal)
+                    || !string.Equals(apellidoAnterior, cliente.Apellido, StringComparison.Ordinal)
+                    || !string.Equals(telefonoAnterior, cliente.Telefono, StringComparison.Ordinal);
+
+                if (!_clienteRepositorio.UpdateCliente(cliente))
+                {
+                    _transaccionBD.RevertirTransaccion();
+                    return false;
+                }
+
+                if (huboCambios)
+                {
+                    string valoresAnteriores = SerializarSnapshot(dniAnterior, nombreAnterior, apellidoAnterior, telefonoAnterior);
+                    string valoresNuevos = SerializarSnapshot(cliente.Dni, cliente.Nombre, cliente.Apellido, cliente.Telefono);
+                    AuditoriaCliente auditoria = CrearAuditoriaCliente(
+                        OperacionesAuditoria.Modificacion,
+                        cliente.Id,
+                        cliente.Dni,
+                        valoresAnteriores,
+                        valoresNuevos);
+
+                    if (!_auditoriaRepositorio.RegistrarCliente(auditoria))
+                    {
+                        throw new InvalidOperationException("No se pudo registrar la auditoría de modificación del cliente.");
+                    }
+                }
+
+                _transaccionBD.ConfirmarTransaccion();
+                return true;
+            }
+            catch
+            {
+                _transaccionBD.RevertirTransaccion();
+                throw;
+            }
         }
 
         public bool DeleteCliente(int id)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return false;
+            }
+
             return DeleteClienteConResultado(id) == ResultadoBajaCliente.Eliminado;
         }
 
         public ResultadoBajaCliente DeleteClienteConResultado(int id)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return ResultadoBajaCliente.SinPermiso;
+            }
+
             if (_clienteRepositorio.GetClienteById(id) == null)
             {
                 return ResultadoBajaCliente.ClienteInexistente;
@@ -210,9 +341,27 @@ namespace GymFlow.Aplicacion
                     throw new InvalidOperationException("No se pudo eliminar la cuenta corriente vacía del cliente.");
                 }
 
+                int dniAnterior = cliente.Dni;
+                string nombreAnterior = cliente.Nombre;
+                string apellidoAnterior = cliente.Apellido;
+                string telefonoAnterior = cliente.Telefono;
+
                 if (!_clienteRepositorio.DeleteCliente(id))
                 {
                     throw new InvalidOperationException("No se pudo eliminar el cliente.");
+                }
+
+                string valoresAnteriores = SerializarSnapshot(dniAnterior, nombreAnterior, apellidoAnterior, telefonoAnterior);
+                AuditoriaCliente auditoria = CrearAuditoriaCliente(
+                    OperacionesAuditoria.Baja,
+                    id,
+                    dniAnterior,
+                    valoresAnteriores,
+                    null);
+
+                if (!_auditoriaRepositorio.RegistrarCliente(auditoria))
+                {
+                    throw new InvalidOperationException("No se pudo registrar la auditoría de baja del cliente.");
                 }
 
                 _transaccionBD.ConfirmarTransaccion();
@@ -233,6 +382,11 @@ namespace GymFlow.Aplicacion
 
         public CuotaCliente GetCuotaActivaByCliente(int clienteId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return null;
+            }
+
             return _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
         }
 
@@ -254,6 +408,11 @@ namespace GymFlow.Aplicacion
 
         public List<EstadoCliente> GetEstadoClientes()
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.ClientesGestionar))
+            {
+                return new List<EstadoCliente>();
+            }
+
             List<EstadoCliente> estados = new List<EstadoCliente>();
             Dictionary<int, CuotaCliente> cuotasActivas = _cuotaClienteRepositorio.GetCuotasActivasPorCliente();
 
@@ -279,6 +438,38 @@ namespace GymFlow.Aplicacion
                 && ValidacionesDatos.EsNombreValido(cliente.Nombre)
                 && ValidacionesDatos.EsNombreValido(cliente.Apellido)
                 && ValidacionesDatos.EsTelefonoValido(cliente.Telefono);
+        }
+
+        private static string SerializarSnapshot(int dni, string nombre, string apellido, string telefono)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                Dni = dni,
+                Nombre = nombre,
+                Apellido = apellido,
+                Telefono = telefono
+            }, OpcionesJson);
+        }
+
+        private AuditoriaCliente CrearAuditoriaCliente(
+            string operacion,
+            int clienteId,
+            int dniCliente,
+            string valoresAnteriores,
+            string valoresNuevos)
+        {
+            return new AuditoriaCliente
+            {
+                FechaHora = DateTime.Now,
+                Operacion = operacion,
+                ClienteId = clienteId,
+                DniCliente = dniCliente,
+                UsuarioId = _contextoUsuario.UsuarioId,
+                EmpleadoId = _contextoUsuario.EmpleadoId > 0 ? _contextoUsuario.EmpleadoId : (int?)null,
+                NombreUsuario = string.IsNullOrWhiteSpace(_contextoUsuario.NombreUsuario) ? "Desconocido" : _contextoUsuario.NombreUsuario,
+                ValoresAnteriores = valoresAnteriores,
+                ValoresNuevos = valoresNuevos
+            };
         }
     }
 }

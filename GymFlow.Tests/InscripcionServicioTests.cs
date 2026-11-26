@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -19,7 +19,7 @@ namespace GymFlow.Tests
                 new ActividadRepositorioEnMemoria(datos),
                 new InscripcionRepositorioEnMemoria(datos),
                 new ClienteRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private DatosEnMemoria CrearConCuotaVigente()
@@ -327,7 +327,7 @@ namespace GymFlow.Tests
                 new ActividadRepositorioEnMemoria(datos),
                 new InscripcionRepositorioConFalloDeBorrado(datos),
                 new ClienteRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
 
             ResultadoBajaMorosos resultado = servicio.DarDeBajaInscripcionesDeMorosos();
 

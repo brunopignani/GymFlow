@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -18,7 +18,7 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new AjusteCuentaRepositorioEnMemoria(datos),
                 new TipoMovimientoRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         [TestMethod]
@@ -46,7 +46,7 @@ namespace GymFlow.Tests
             Assert.AreEqual(1, datos.Confirmadas);
             Assert.AreEqual(0, datos.Revertidas);
             Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
-            Assert.AreEqual(250.50m, new CuentaCorrienteServicio(new CuentaCorrienteRepositorioEnMemoria(datos), new MovimientoRepositorioEnMemoria(datos)).ConsultarCuentaCorriente(1).Saldo);
+            Assert.AreEqual(250.50m, new CuentaCorrienteServicio(new CuentaCorrienteRepositorioEnMemoria(datos), new MovimientoRepositorioEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos()).ConsultarCuentaCorriente(1).Saldo);
         }
 
         [TestMethod]
@@ -60,7 +60,7 @@ namespace GymFlow.Tests
             Assert.AreEqual(2, movimiento.TipoMovimientoId);
             Assert.AreEqual(400m, movimiento.Importe);
             Assert.AreEqual(1, datos.Comprobantes.OfType<AjusteCuenta>().Count());
-            Assert.AreEqual(-400m, new CuentaCorrienteServicio(new CuentaCorrienteRepositorioEnMemoria(datos), new MovimientoRepositorioEnMemoria(datos)).ConsultarCuentaCorriente(1).Saldo);
+            Assert.AreEqual(-400m, new CuentaCorrienteServicio(new CuentaCorrienteRepositorioEnMemoria(datos), new MovimientoRepositorioEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos()).ConsultarCuentaCorriente(1).Saldo);
         }
 
         [TestMethod]

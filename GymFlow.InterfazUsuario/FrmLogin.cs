@@ -81,8 +81,17 @@ namespace GymFlow.InterfazUsuario
                     return;
                 }
 
-                SesionActual.Iniciar(empleado);
+                System.Collections.Generic.IReadOnlySet<string> permisos = empleado.UsuarioId.HasValue
+                    ? _usuarioServicio.ObtenerPermisosEfectivos(empleado.UsuarioId.Value)
+                    : null;
+
+                SesionActual.Iniciar(empleado, permisos);
                 this.DialogResult = DialogResult.OK;
+            }
+            catch (AuditoriaLoginException ex)
+            {
+                Debug.WriteLine(ex.ToString());
+                MessageBox.Show(ex.Message, "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {

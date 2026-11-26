@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -21,7 +21,8 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new CuotaRepositorioEnMemoria(datos),
                 new ComprobanteRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new AuditoriaRepositorioEnMemoria(datos),
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private Cliente NuevoCliente(int dni)
@@ -203,7 +204,7 @@ namespace GymFlow.Tests
             Assert.IsFalse(datos.Cuentas.Any(cc => cc.ClienteId == id));
             Assert.IsFalse(datos.CuotasCliente.Any(cc => cc.ClienteId == id));
             Assert.AreEqual(IsolationLevel.Serializable, datos.UltimoNivelAislamiento);
-            Assert.AreEqual(1, datos.Confirmadas);
+            Assert.AreEqual(2, datos.Confirmadas);
         }
 
         [TestMethod]

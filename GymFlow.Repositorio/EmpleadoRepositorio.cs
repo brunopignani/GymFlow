@@ -23,7 +23,11 @@ namespace GymFlow.Repositorio
 
         public List<Empleado> GetAllEmpleados()
         {
-            return _contexto.Empleados.Include(e => e.Usuario).ToList();
+            return _contexto.Empleados
+                .Include(e => e.Usuario).ThenInclude(u => u.Grupos)
+                .Include(e => e.Usuario).ThenInclude(u => u.AccionesDirectas)
+                .AsSplitQuery()
+                .ToList();
         }
 
         public Empleado GetEmpleadoByDni(int dni)

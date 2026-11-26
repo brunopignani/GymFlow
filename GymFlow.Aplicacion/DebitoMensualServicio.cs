@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -17,6 +17,8 @@ namespace GymFlow.Aplicacion
         private readonly IComprobanteRepositorio _comprobanteRepositorio;
         private readonly ITipoMovimientoRepositorio _tipoMovimientoRepositorio;
         private readonly ITransaccionBD _transaccion;
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public DebitoMensualServicio(
             IClienteRepositorio clienteRepositorio,
@@ -26,8 +28,10 @@ namespace GymFlow.Aplicacion
             IMovimientoRepositorio movimientoRepositorio,
             IComprobanteRepositorio comprobanteRepositorio,
             ITipoMovimientoRepositorio tipoMovimientoRepositorio,
-            ITransaccionBD transaccion)
+            ITransaccionBD transaccion,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _clienteRepositorio = clienteRepositorio;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
@@ -40,6 +44,11 @@ namespace GymFlow.Aplicacion
 
         public ResultadoDebitoMensual EmitirDebitosMensuales()
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.DebitoMensualEmitir))
+            {
+                return new ResultadoDebitoMensual();
+            }
+
             ResultadoDebitoMensual resultado = new ResultadoDebitoMensual();
             List<Cliente> clientes = _clienteRepositorio.GetAllClientes();
 

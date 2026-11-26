@@ -5,6 +5,7 @@ using GymFlow.Repositorio;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace GymFlow.InterfazUsuario
@@ -22,6 +23,8 @@ namespace GymFlow.InterfazUsuario
             servicios.AddDbContext<GymFlowDbContext>(options =>
                 options.UseSqlServer(ConfiguracionBD.CadenaConexion));
 
+            servicios.AddScoped<IContextoUsuarioActual, ContextoUsuarioActual>();
+
             servicios.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
             servicios.AddScoped<IPersonaRepositorio, PersonaRepositorio>();
             servicios.AddScoped<IClienteRepositorio, ClienteRepositorio>();
@@ -35,6 +38,9 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<ITipoMovimientoRepositorio, TipoMovimientoRepositorio>();
             servicios.AddScoped<IComprobanteRepositorio, ComprobanteRepositorio>();
             servicios.AddScoped<IAjusteCuentaRepositorio, AjusteCuentaRepositorio>();
+            servicios.AddScoped<IGrupoRepositorio, GrupoRepositorio>();
+            servicios.AddScoped<IAccionRepositorio, AccionRepositorio>();
+            servicios.AddScoped<IAuditoriaRepositorio, AuditoriaRepositorio>();
             servicios.AddScoped<ITransaccionBD, TransaccionBD>();
 
             servicios.AddScoped<InscripcionServicio>();
@@ -46,7 +52,12 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<NotaCreditoServicio>();
             servicios.AddScoped<AjusteCuentaServicio>();
             servicios.AddScoped<UsuarioServicio>();
+            servicios.AddScoped<GrupoServicio>();
+            servicios.AddScoped<CuotaServicio>();
+            servicios.AddScoped<AuditoriaServicio>();
+            servicios.AddScoped<InicializadorDatosServicio>();
 
+            servicios.AddTransient<FrmAdminInicial>();
             servicios.AddTransient<FrmLogin>();
             servicios.AddTransient<FrmPrincipal>();
             servicios.AddTransient<FrmAutoingreso>();
@@ -60,7 +71,10 @@ namespace GymFlow.InterfazUsuario
             servicios.AddTransient<FrmNotaCredito>();
             servicios.AddTransient<FrmAjusteCuenta>();
             servicios.AddTransient<FrmUsuarios>();
+            servicios.AddTransient<FrmGrupos>();
+            servicios.AddTransient<FrmPrecioCuota>();
             servicios.AddTransient<FrmCambiarClave>();
+            servicios.AddTransient<FrmAuditoria>();
 
             ServiceProviderOptions opciones = new ServiceProviderOptions();
             opciones.ValidateScopes = true;
@@ -68,6 +82,37 @@ namespace GymFlow.InterfazUsuario
 
             using (ServiceProvider proveedor = servicios.BuildServiceProvider(opciones))
             {
+                using (IServiceScope alcanceInicial = proveedor.CreateScope())
+                {
+                    try
+                    {
+                        InicializadorDatosServicio inicializador = alcanceInicial.ServiceProvider.GetRequiredService<InicializadorDatosServicio>();
+                        inicializador.Inicializar();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex.ToString());
+                        MessageBox.Show(
+                            "Error crítico al inicializar los datos base del sistema. La aplicación se cerrará.\n\n" + ex.Message,
+                            "GymFlow - Error de inicialización",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    UsuarioServicio usuarioServicio = alcanceInicial.ServiceProvider.GetRequiredService<UsuarioServicio>();
+                    if (!usuarioServicio.ExisteAdministradorActivo())
+                    {
+                        using (FrmAdminInicial frmAdmin = alcanceInicial.ServiceProvider.GetRequiredService<FrmAdminInicial>())
+                        {
+                            if (frmAdmin.ShowDialog() != DialogResult.OK || !usuarioServicio.ExisteAdministradorActivo())
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+
                 while (true)
                 {
                     using (IServiceScope alcance = proveedor.CreateScope())

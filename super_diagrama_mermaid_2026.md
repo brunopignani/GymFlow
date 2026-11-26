@@ -43,38 +43,29 @@ namespace Modelo_de_Dominio {
         -CLI_CUENTA: CUENTA CORRIENTE[0..1]
     }
 
-    class DOM_SESION["SESION"] {
-        -SES_ID: int
-        -SES_FECHA_INICIO: datetime
-        -SES_USUARIO: USUARIO[1]
-        -SES_PERFIL: ACCION[0..*]
-    }
-
-    class DOM_SESION_SINGLETON["SESION"] {
-        <<SINGLETON>>
-        -SES_ID: int
-        -SES_FECHA_INICIO: datetime
-        -SES_USUARIO: USUARIO[1]
-        -SES_PERFIL: ACCION[0..*]
-        -SES_INSTANCIA: SESION
-        -SESION()
-        +ObtenerInstancia() SESION
-        +IniciarSesion(usuario: USUARIO)
-        +CerrarSesion()
+    class DOM_COMPONENTE_PERMISO["COMPONENTE_PERMISO"] {
+        <<abstract>>
+        +Id: int
+        +Nombre: string
+        +ObtenerCodigosPermiso()* string[0..*]
+        +TienePermiso(codigo: string) bool
     }
 
     class DOM_GRUPO["GRUPO"] {
-        -GRU_ID: int
-        -GRU_NOMBRE: string
-        -GRU_DESCRIPCION: string
-        -GRU_ESTADO: string
-        -GRU_ACCIONES: ACCION[0..*]
+        +Descripcion: string
+        +Estado: string
+        +Acciones: ACCION[0..*]
+        +Subgrupos: GRUPO[0..*]
+        +ObtenerHijos() COMPONENTE_PERMISO[0..*]
+        +ObtenerCodigosPermiso() string[0..*]
+        +TienePermiso(codigo: string) bool
     }
 
     class DOM_ACCION["ACCION"] {
-        -ACC_ID: int
-        -ACC_NOMBRE: string
-        -ACC_FORM: FORMULARIO[1]
+        +Codigo: string
+        +Formulario: FORMULARIO[1]
+        +ObtenerCodigosPermiso() string[0..*]
+        +TienePermiso(codigo: string) bool
     }
 
     class DOM_FORMULARIO["FORMULARIO"] {
@@ -160,24 +151,23 @@ namespace Modelo_de_Dominio {
     }
 }
 
-note for DOM_SESION_SINGLETON "EMPLEADO CON ROL DE ADMINISTRADOR?\nLISTAS Y ESTADOS?"
-
-%% Herencias del Dominio (NOTA VENTA, NOTA CREDITO y RECIBO PAGO heredan de COMPROBANTE)
+%% Herencias del Dominio (NOTA VENTA, NOTA CREDITO y RECIBO PAGO heredan de COMPROBANTE; ACCION y GRUPO heredan de COMPONENTE_PERMISO)
 DOM_EMPLEADO --|> DOM_PERSONA
 DOM_CLIENTE --|> DOM_PERSONA
 DOM_NOTA_VENTA --|> DOM_COMPROBANTE
 DOM_NOTA_CREDITO --|> DOM_COMPROBANTE
 DOM_RECIBO_PAGO --|> DOM_COMPROBANTE
+DOM_ACCION --|> DOM_COMPONENTE_PERMISO
+DOM_GRUPO --|> DOM_COMPONENTE_PERMISO
 
 %% Asociaciones y Agregaciones del Dominio
 DOM_USUARIO "0..1" .. "1" DOM_PERSONA
-DOM_SESION "0..*" -- "1" DOM_USUARIO
-DOM_SESION_SINGLETON "1" --> "1" DOM_SESION_SINGLETON
 DOM_USUARIO "0..*" -- "0..*" DOM_GRUPO
+DOM_USUARIO "0..*" -- "0..*" DOM_ACCION : "acciones directas"
 DOM_GRUPO "0..*" o-- "0..*" DOM_ACCION
-DOM_ACCION "0..*" -- "1" DOM_FORMULARIO
-DOM_FORMULARIO "0..*" -- "1" DOM_MODULO
-DOM_ACCION "0..*" -- "0..*" DOM_USUARIO
+DOM_GRUPO "0..*" o-- "0..*" DOM_GRUPO : "subgrupos"
+DOM_MODULO "1" -- "0..*" DOM_FORMULARIO
+DOM_FORMULARIO "1" -- "0..*" DOM_ACCION
 
 DOM_CLIENTE "1" -- "0..*" DOM_INSCRIPCION
 DOM_ACTIVIDAD "1" -- "0..*" DOM_INSCRIPCION
@@ -505,10 +495,21 @@ erDiagram
         dato ACC_ID PK
         dato FOR_ID FK
         dato ACC_NOMBRE
+        dato ACC_CODIGO UK
     }
 
     T_GRUPO_ACCION {
         dato GRU_ID PK, FK
+        dato ACC_ID PK, FK
+    }
+
+    T_GRUPO_GRUPO {
+        dato GrupoPadreId PK, FK
+        dato GrupoHijoId PK, FK
+    }
+
+    T_USUARIO_ACCION {
+        dato USU_ID PK, FK
         dato ACC_ID PK, FK
     }
 
@@ -599,15 +600,15 @@ erDiagram
         dato NVT_ID FK
     }
 
-    "SESION?" {
-        dato sin_definir PK
-    }
-
     %% Relaciones Seguridad y Permisos
     T_USUARIO ||--o{ T_USUARIO_GRUPO : ""
     T_GRUPO ||--o{ T_USUARIO_GRUPO : ""
+    T_USUARIO ||--o{ T_USUARIO_ACCION : ""
+    T_ACCION ||--o{ T_USUARIO_ACCION : ""
     T_GRUPO ||--o{ T_GRUPO_ACCION : ""
     T_ACCION ||--o{ T_GRUPO_ACCION : ""
+    T_GRUPO ||--o{ T_GRUPO_GRUPO : "GrupoPadreId"
+    T_GRUPO ||--o{ T_GRUPO_GRUPO : "GrupoHijoId"
     T_MODULO ||--o{ T_FORMULARIO : ""
     T_FORMULARIO ||--o{ T_ACCION : ""
 

@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.ContextoBD;
 using GymFlow.Dominio;
 using System.Collections.Generic;
@@ -15,9 +15,16 @@ namespace GymFlow.Repositorio
             _contexto = contexto;
         }
 
+        public bool AddTipoMovimiento(TipoMovimiento tipoMovimiento)
+        {
+            _contexto.TiposMovimiento.Add(tipoMovimiento);
+            return _contexto.SaveChanges() > 0;
+        }
+
         public List<TipoMovimiento> GetAllTiposMovimiento()
         {
             return _contexto.TiposMovimiento.ToList();
         }
     }
 }
+

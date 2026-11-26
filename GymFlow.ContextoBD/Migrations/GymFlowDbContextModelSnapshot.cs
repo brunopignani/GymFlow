@@ -22,6 +22,37 @@ namespace GymFlow.ContextoBD.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("GymFlow.Dominio.Accion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("FormularioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("FormularioId");
+
+                    b.ToTable("T_ACCION", (string)null);
+                });
+
             modelBuilder.Entity("GymFlow.Dominio.Actividad", b =>
                 {
                     b.Property<int>("Id")
@@ -39,6 +70,94 @@ namespace GymFlow.ContextoBD.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Actividades");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.AuditoriaCliente", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DniCliente")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EmpleadoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NombreUsuario")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Operacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ValoresAnteriores")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ValoresNuevos")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("DniCliente");
+
+                    b.HasIndex("FechaHora");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("T_AUDITORIA_CLIENTE", (string)null);
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.AuditoriaSesion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("EmpleadoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NombreUsuario")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TipoEvento")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaHora");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("T_AUDITORIA_SESION", (string)null);
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.Comprobante", b =>
@@ -139,6 +258,60 @@ namespace GymFlow.ContextoBD.Migrations
                     b.ToTable("CuotasCliente");
                 });
 
+            modelBuilder.Entity("GymFlow.Dominio.Formulario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ModuloId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuloId", "Nombre")
+                        .IsUnique();
+
+                    b.ToTable("T_FORMULARIO", (string)null);
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.Grupo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("T_GRUPO", (string)null);
+                });
+
             modelBuilder.Entity("GymFlow.Dominio.Inscripcion", b =>
                 {
                     b.Property<int>("Id")
@@ -163,6 +336,27 @@ namespace GymFlow.ContextoBD.Migrations
                     b.HasIndex("ClienteId");
 
                     b.ToTable("Inscripciones");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.Modulo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("T_MODULO", (string)null);
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.Movimiento", b =>
@@ -275,6 +469,69 @@ namespace GymFlow.ContextoBD.Migrations
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("T_GRUPO_ACCION", b =>
+                {
+                    b.Property<int>("GrupoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AccionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("GrupoId", "AccionId");
+
+                    b.HasIndex("AccionId");
+
+                    b.ToTable("T_GRUPO_ACCION");
+                });
+
+            modelBuilder.Entity("T_GRUPO_GRUPO", b =>
+                {
+                    b.Property<int>("GrupoPadreId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GrupoHijoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("GrupoPadreId", "GrupoHijoId");
+
+                    b.HasIndex("GrupoHijoId");
+
+                    b.ToTable("T_GRUPO_GRUPO", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_T_GRUPO_GRUPO_NoAutoReferencia", "[GrupoPadreId] <> [GrupoHijoId]");
+                        });
+                });
+
+            modelBuilder.Entity("T_USUARIO_ACCION", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AccionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UsuarioId", "AccionId");
+
+                    b.HasIndex("AccionId");
+
+                    b.ToTable("T_USUARIO_ACCION");
+                });
+
+            modelBuilder.Entity("T_USUARIO_GRUPO", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GrupoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UsuarioId", "GrupoId");
+
+                    b.HasIndex("GrupoId");
+
+                    b.ToTable("T_USUARIO_GRUPO");
+                });
+
             modelBuilder.Entity("GymFlow.Dominio.AjusteCuenta", b =>
                 {
                     b.HasBaseType("GymFlow.Dominio.Comprobante");
@@ -353,6 +610,35 @@ namespace GymFlow.ContextoBD.Migrations
                     b.ToTable("Empleados", (string)null);
                 });
 
+            modelBuilder.Entity("GymFlow.Dominio.Accion", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Formulario", "Formulario")
+                        .WithMany("Acciones")
+                        .HasForeignKey("FormularioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Formulario");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.AuditoriaCliente", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.AuditoriaSesion", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("GymFlow.Dominio.CuentaCorriente", b =>
                 {
                     b.HasOne("GymFlow.Dominio.Cliente", "Cliente")
@@ -381,6 +667,17 @@ namespace GymFlow.ContextoBD.Migrations
                     b.Navigation("Cliente");
 
                     b.Navigation("Cuota");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.Formulario", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Modulo", "Modulo")
+                        .WithMany("Formularios")
+                        .HasForeignKey("ModuloId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Modulo");
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.Inscripcion", b =>
@@ -434,6 +731,66 @@ namespace GymFlow.ContextoBD.Migrations
                         .HasForeignKey("GymFlow.Dominio.Persona", "UsuarioId");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("T_GRUPO_ACCION", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Accion", null)
+                        .WithMany()
+                        .HasForeignKey("AccionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GymFlow.Dominio.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("T_GRUPO_GRUPO", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoHijoId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("GymFlow.Dominio.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoPadreId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("T_USUARIO_ACCION", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Accion", null)
+                        .WithMany()
+                        .HasForeignKey("AccionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GymFlow.Dominio.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("T_USUARIO_GRUPO", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GymFlow.Dominio.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.AjusteCuenta", b =>
@@ -530,6 +887,16 @@ namespace GymFlow.ContextoBD.Migrations
             modelBuilder.Entity("GymFlow.Dominio.CuentaCorriente", b =>
                 {
                     b.Navigation("Movimientos");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.Formulario", b =>
+                {
+                    b.Navigation("Acciones");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.Modulo", b =>
+                {
+                    b.Navigation("Formularios");
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.Cliente", b =>

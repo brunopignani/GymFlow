@@ -1,4 +1,4 @@
-using GymFlow.Dominio;
+﻿using GymFlow.Dominio;
 using System.Collections.Generic;
 
 namespace GymFlow.Abstracciones
@@ -10,5 +10,8 @@ namespace GymFlow.Abstracciones
         bool AddUsuario(Usuario usuario);
         Usuario GetUsuarioByNombre(string nombre);
         bool UpdateUsuario(Usuario usuario);
+        Usuario GetUsuarioConPermisosById(int id);
+        Usuario GetUsuarioConPermisosByNombre(string nombre);
     }
 }
+

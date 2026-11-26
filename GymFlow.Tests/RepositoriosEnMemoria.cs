@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -20,6 +20,12 @@ namespace GymFlow.Tests
         public List<Actividad> Actividades = new List<Actividad>();
         public List<Inscripcion> Inscripciones = new List<Inscripcion>();
         public List<Usuario> Usuarios = new List<Usuario>();
+        public List<Grupo> Grupos = new List<Grupo>();
+        public List<Accion> Acciones = new List<Accion>();
+        public List<Modulo> Modulos = new List<Modulo>();
+        public List<Formulario> Formularios = new List<Formulario>();
+        public List<AuditoriaSesion> AuditoriasSesion = new List<AuditoriaSesion>();
+        public List<AuditoriaCliente> AuditoriasCliente = new List<AuditoriaCliente>();
 
         public int TransaccionesIniciadas;
         public int Confirmadas;
@@ -36,6 +42,10 @@ namespace GymFlow.Tests
         public bool FallarAlGuardarInscripcion;
         public bool FallarAlEliminarInscripcion;
         public bool FallarAlEliminarCliente;
+        public bool FallarAlRegistrarAuditoriaSesion;
+        public bool RechazarRegistrarAuditoriaSesion;
+        public bool FallarAlRegistrarAuditoriaCliente;
+        public bool RechazarRegistrarAuditoriaCliente;
         public int CuentaQueFallaAlGuardarMovimiento;
 
         public int SiguientePersonaId()
@@ -168,6 +178,13 @@ namespace GymFlow.Tests
         public List<TipoMovimiento> GetAllTiposMovimiento()
         {
             return _datos.Tipos.ToList();
+        }
+
+        public bool AddTipoMovimiento(TipoMovimiento tipoMovimiento)
+        {
+            tipoMovimiento.Id = _datos.Tipos.Count == 0 ? 1 : _datos.Tipos.Max(t => t.Id) + 1;
+            _datos.Tipos.Add(tipoMovimiento);
+            return true;
         }
     }
 
@@ -493,6 +510,18 @@ namespace GymFlow.Tests
         {
             return _datos.Cuotas.FirstOrDefault(c => c.Id == id);
         }
+
+        public bool UpdateCuota(Cuota cuota)
+        {
+            return _datos.Cuotas.Any(c => c.Id == cuota.Id);
+        }
+
+        public bool AddCuota(Cuota cuota)
+        {
+            cuota.Id = _datos.Cuotas.Count == 0 ? 1 : _datos.Cuotas.Max(c => c.Id) + 1;
+            _datos.Cuotas.Add(cuota);
+            return true;
+        }
     }
 
     public class TransaccionEnMemoria : ITransaccionBD
@@ -504,6 +533,9 @@ namespace GymFlow.Tests
         private List<Cliente> _clientes;
         private List<CuentaCorriente> _cuentas;
         private List<CuotaCliente> _cuotasCliente;
+        private List<AuditoriaSesion> _auditoriasSesion;
+        private List<AuditoriaCliente> _auditoriasCliente;
+        private Dictionary<int, (int Dni, string Nombre, string Apellido, string Telefono)> _datosClientes;
         private Dictionary<int, DateTime?> _vencimientos;
         private Dictionary<int, string> _estados;
         private Dictionary<int, int> _capacidades;
@@ -528,6 +560,9 @@ namespace GymFlow.Tests
             _clientes = _datos.Clientes.ToList();
             _cuentas = _datos.Cuentas.ToList();
             _cuotasCliente = _datos.CuotasCliente.ToList();
+            _auditoriasSesion = _datos.AuditoriasSesion.ToList();
+            _auditoriasCliente = _datos.AuditoriasCliente.ToList();
+            _datosClientes = _datos.Clientes.ToDictionary(c => c.Id, c => (c.Dni, c.Nombre, c.Apellido, c.Telefono));
             _vencimientos = _datos.CuotasCliente.ToDictionary(cc => cc.Id, cc => cc.FechaVencimiento);
             _estados = _datos.CuotasCliente.ToDictionary(cc => cc.Id, cc => cc.Estado);
             _capacidades = _datos.Actividades.ToDictionary(a => a.Id, a => a.CapacidadMaxima);
@@ -560,6 +595,22 @@ namespace GymFlow.Tests
             _datos.Cuentas.AddRange(_cuentas);
             _datos.CuotasCliente.Clear();
             _datos.CuotasCliente.AddRange(_cuotasCliente);
+            _datos.AuditoriasSesion.Clear();
+            _datos.AuditoriasSesion.AddRange(_auditoriasSesion);
+            _datos.AuditoriasCliente.Clear();
+            _datos.AuditoriasCliente.AddRange(_auditoriasCliente);
+
+            foreach (Cliente cliente in _datos.Clientes)
+            {
+                if (_datosClientes.ContainsKey(cliente.Id))
+                {
+                    var previo = _datosClientes[cliente.Id];
+                    cliente.Dni = previo.Dni;
+                    cliente.Nombre = previo.Nombre;
+                    cliente.Apellido = previo.Apellido;
+                    cliente.Telefono = previo.Telefono;
+                }
+            }
 
             foreach (CuotaCliente cuotaCliente in _datos.CuotasCliente)
             {
@@ -593,6 +644,9 @@ namespace GymFlow.Tests
             _clientes = null;
             _cuentas = null;
             _cuotasCliente = null;
+            _auditoriasSesion = null;
+            _auditoriasCliente = null;
+            _datosClientes = null;
             _vencimientos = null;
             _estados = null;
             _capacidades = null;
@@ -658,7 +712,7 @@ namespace GymFlow.Tests
         {
             if (_datos.FallarAlGuardarInscripcion)
             {
-                throw new InvalidOperationException("Falla simulada al guardar la inscripción.");
+                throw new InvalidOperationException("Falla simulada al guardar la inscripciÃ³n.");
             }
 
             inscripcion.Id = _datos.Inscripciones.Count == 0 ? 1 : _datos.Inscripciones.Max(i => i.Id) + 1;
@@ -706,7 +760,7 @@ namespace GymFlow.Tests
         {
             if (_datos.FallarAlEliminarInscripcion)
             {
-                throw new InvalidOperationException("Falla simulada al eliminar la inscripción.");
+                throw new InvalidOperationException("Falla simulada al eliminar la inscripciÃ³n.");
             }
 
             return _datos.Inscripciones.RemoveAll(i => i.Id == id) > 0;
@@ -748,6 +802,16 @@ namespace GymFlow.Tests
         {
             return _datos.Usuarios.Any(u => u.Id == usuario.Id);
         }
+
+        public Usuario GetUsuarioConPermisosById(int id)
+        {
+            return GetUsuarioById(id);
+        }
+
+        public Usuario GetUsuarioConPermisosByNombre(string nombre)
+        {
+            return GetUsuarioByNombre(nombre);
+        }
     }
 
     public class PersonaRepositorioEnMemoria : IPersonaRepositorio
@@ -764,6 +828,244 @@ namespace GymFlow.Tests
             return _datos.Clientes.Cast<Persona>()
                 .Concat(_datos.Empleados)
                 .Any(p => p.Dni == dni && (!excluirPersonaId.HasValue || p.Id != excluirPersonaId.Value));
+        }
+    }
+
+    public class GrupoRepositorioEnMemoria : IGrupoRepositorio
+    {
+        private readonly DatosEnMemoria _datos;
+
+        public GrupoRepositorioEnMemoria(DatosEnMemoria datos)
+        {
+            _datos = datos;
+        }
+
+        public List<Grupo> GetAllGruposConRelaciones()
+        {
+            return _datos.Grupos.ToList();
+        }
+
+        public Grupo GetGrupoByIdConRelaciones(int id)
+        {
+            return _datos.Grupos.FirstOrDefault(g => g.Id == id);
+        }
+
+        public Grupo GetGrupoByNombre(string nombre)
+        {
+            return _datos.Grupos.FirstOrDefault(g => string.Equals(g.Nombre, nombre, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool AddGrupo(Grupo grupo)
+        {
+            grupo.Id = _datos.Grupos.Count == 0 ? 1 : _datos.Grupos.Max(g => g.Id) + 1;
+            _datos.Grupos.Add(grupo);
+            return true;
+        }
+
+        public bool UpdateGrupo(Grupo grupo)
+        {
+            return _datos.Grupos.Any(g => g.Id == grupo.Id);
+        }
+
+        public bool DeleteGrupo(int id)
+        {
+            Grupo grupo = _datos.Grupos.FirstOrDefault(g => g.Id == id);
+            if (grupo == null)
+            {
+                return false;
+            }
+
+            grupo.Acciones.Clear();
+            return _datos.Grupos.Remove(grupo);
+        }
+
+        public bool TieneUsuariosAsignados(int grupoId)
+        {
+            return _datos.Usuarios.Any(u => u.Grupos.Any(g => g.Id == grupoId));
+        }
+
+        public bool EsSubgrupoDeOtro(int grupoId)
+        {
+            return _datos.Grupos.Any(g => g.Subgrupos.Any(s => s.Id == grupoId));
+        }
+    }
+
+    public class AccionRepositorioEnMemoria : IAccionRepositorio
+    {
+        private readonly DatosEnMemoria _datos;
+
+        public AccionRepositorioEnMemoria(DatosEnMemoria datos)
+        {
+            _datos = datos;
+        }
+
+        public List<Accion> GetAllAccionesConFormularioYModulo()
+        {
+            return _datos.Acciones.ToList();
+        }
+
+        public Accion GetAccionByCodigo(string codigo)
+        {
+            return _datos.Acciones.FirstOrDefault(a => string.Equals(a.Codigo, codigo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool AddModulo(Modulo modulo)
+        {
+            modulo.Id = _datos.Modulos.Count == 0 ? 1 : _datos.Modulos.Max(m => m.Id) + 1;
+            _datos.Modulos.Add(modulo);
+            return true;
+        }
+
+        public bool AddFormulario(Formulario formulario)
+        {
+            formulario.Id = _datos.Formularios.Count == 0 ? 1 : _datos.Formularios.Max(f => f.Id) + 1;
+            Modulo modulo = _datos.Modulos.FirstOrDefault(m => m.Id == formulario.ModuloId);
+            if (modulo != null)
+            {
+                formulario.Modulo = modulo;
+                if (!modulo.Formularios.Any(f => f.Id == formulario.Id))
+                {
+                    modulo.Formularios.Add(formulario);
+                }
+            }
+            _datos.Formularios.Add(formulario);
+            return true;
+        }
+
+        public bool AddAccion(Accion accion)
+        {
+            accion.Id = _datos.Acciones.Count == 0 ? 1 : _datos.Acciones.Max(a => a.Id) + 1;
+            Formulario formulario = _datos.Formularios.FirstOrDefault(f => f.Id == accion.FormularioId);
+            if (formulario != null)
+            {
+                accion.Formulario = formulario;
+                if (!formulario.Acciones.Any(a => a.Id == accion.Id))
+                {
+                    formulario.Acciones.Add(accion);
+                }
+            }
+            _datos.Acciones.Add(accion);
+            return true;
+        }
+
+        public List<Modulo> GetAllModulosConFormulariosYAcciones()
+        {
+            return _datos.Modulos.ToList();
+        }
+    }
+
+    public class AuditoriaRepositorioEnMemoria : IAuditoriaRepositorio
+    {
+        private readonly DatosEnMemoria _datos;
+
+        public AuditoriaRepositorioEnMemoria(DatosEnMemoria datos)
+        {
+            _datos = datos;
+        }
+
+        public bool RegistrarSesion(AuditoriaSesion registro)
+        {
+            if (_datos.FallarAlRegistrarAuditoriaSesion)
+            {
+                throw new InvalidOperationException("Falla simulada al registrar auditoría de sesión.");
+            }
+
+            if (_datos.RechazarRegistrarAuditoriaSesion)
+            {
+                return false;
+            }
+
+            registro.Id = _datos.AuditoriasSesion.Count == 0 ? 1 : _datos.AuditoriasSesion.Max(a => a.Id) + 1;
+            _datos.AuditoriasSesion.Add(registro);
+            return true;
+        }
+
+        public bool RegistrarCliente(AuditoriaCliente registro)
+        {
+            if (_datos.FallarAlRegistrarAuditoriaCliente)
+            {
+                throw new InvalidOperationException("Falla simulada al registrar auditoría de cliente.");
+            }
+
+            if (_datos.RechazarRegistrarAuditoriaCliente)
+            {
+                return false;
+            }
+
+            registro.Id = _datos.AuditoriasCliente.Count == 0 ? 1 : _datos.AuditoriasCliente.Max(a => a.Id) + 1;
+            _datos.AuditoriasCliente.Add(registro);
+            return true;
+        }
+
+        public List<AuditoriaSesion> ConsultarSesiones(DateTime? desde, DateTime? hasta, string nombreUsuario, string tipoEvento)
+        {
+            IEnumerable<AuditoriaSesion> consulta = _datos.AuditoriasSesion;
+
+            if (desde.HasValue)
+            {
+                consulta = consulta.Where(a => a.FechaHora >= desde.Value);
+            }
+
+            if (hasta.HasValue)
+            {
+                consulta = consulta.Where(a => a.FechaHora <= hasta.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(nombreUsuario))
+            {
+                string filtro = nombreUsuario.Trim();
+                consulta = consulta.Where(a => a.NombreUsuario != null
+                    && a.NombreUsuario.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            if (!string.IsNullOrWhiteSpace(tipoEvento))
+            {
+                string filtroEvento = tipoEvento.Trim();
+                consulta = consulta.Where(a => string.Equals(a.TipoEvento, filtroEvento, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return consulta
+                .OrderByDescending(a => a.FechaHora)
+                .ThenByDescending(a => a.Id)
+                .ToList();
+        }
+
+        public List<AuditoriaCliente> ConsultarClientes(DateTime? desde, DateTime? hasta, string nombreUsuario, string operacion, int? dniCliente)
+        {
+            IEnumerable<AuditoriaCliente> consulta = _datos.AuditoriasCliente;
+
+            if (desde.HasValue)
+            {
+                consulta = consulta.Where(a => a.FechaHora >= desde.Value);
+            }
+
+            if (hasta.HasValue)
+            {
+                consulta = consulta.Where(a => a.FechaHora <= hasta.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(nombreUsuario))
+            {
+                string filtro = nombreUsuario.Trim();
+                consulta = consulta.Where(a => a.NombreUsuario != null
+                    && a.NombreUsuario.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            if (!string.IsNullOrWhiteSpace(operacion))
+            {
+                string filtroOperacion = operacion.Trim();
+                consulta = consulta.Where(a => string.Equals(a.Operacion, filtroOperacion, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (dniCliente.HasValue)
+            {
+                consulta = consulta.Where(a => a.DniCliente == dniCliente.Value);
+            }
+
+            return consulta
+                .OrderByDescending(a => a.FechaHora)
+                .ThenByDescending(a => a.Id)
+                .ToList();
         }
     }
 }

@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
@@ -13,7 +13,12 @@ namespace GymFlow.Tests
             return new UsuarioServicio(
                 new UsuarioRepositorioEnMemoria(datos),
                 new EmpleadoRepositorioEnMemoria(datos),
-                new PersonaRepositorioEnMemoria(datos));
+                new PersonaRepositorioEnMemoria(datos),
+                new GrupoRepositorioEnMemoria(datos),
+                new AccionRepositorioEnMemoria(datos),
+                new AuditoriaRepositorioEnMemoria(datos),
+                new TransaccionEnMemoria(datos),
+                ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private UsuarioServicio CrearConRecepcionista(DatosEnMemoria datos)

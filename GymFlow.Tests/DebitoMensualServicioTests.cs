@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -19,7 +19,7 @@ namespace GymFlow.Tests
                 new MovimientoRepositorioEnMemoria(datos),
                 new ComprobanteRepositorioEnMemoria(datos),
                 new TipoMovimientoRepositorioEnMemoria(datos),
-                new TransaccionEnMemoria(datos));
+                new TransaccionEnMemoria(datos), ContextoUsuarioEnMemoria.ConTodosLosPermisos());
         }
 
         private void AgregarClienteConCuenta(DatosEnMemoria datos, int clienteId, int cuentaId)

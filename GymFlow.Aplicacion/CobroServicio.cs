@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,8 @@ namespace GymFlow.Aplicacion
         private readonly DebitoMensualServicio _debitoMensualServicio;
 
         public static readonly string[] MediosPagoValidos = { "Efectivo", "Tarjeta de Débito", "Tarjeta de Crédito", "Transferencia" };
+        private readonly IContextoUsuarioActual _contextoUsuario;
+
 
         public CobroServicio(
             ICuentaCorrienteRepositorio cuentaCorrienteRepositorio,
@@ -29,8 +31,10 @@ namespace GymFlow.Aplicacion
             ITipoMovimientoRepositorio tipoMovimientoRepositorio,
             ITransaccionBD transaccion,
             ICuotaRepositorio cuotaRepositorio,
-            DebitoMensualServicio debitoMensualServicio)
+            DebitoMensualServicio debitoMensualServicio,
+            IContextoUsuarioActual contextoUsuario)
         {
+            _contextoUsuario = contextoUsuario;
             _cuentaCorrienteRepositorio = cuentaCorrienteRepositorio;
             _cuotaClienteRepositorio = cuotaClienteRepositorio;
             _empleadoRepositorio = empleadoRepositorio;
@@ -62,6 +66,11 @@ namespace GymFlow.Aplicacion
 
         public bool RegistrarCobro(int clienteId, int empleadoId, decimal importe, string metodoPago)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.CobroRegistrar))
+            {
+                return false;
+            }
+
             if (importe <= 0 || !EsMedioPagoValido(metodoPago))
             {
                 return false;
@@ -182,6 +191,11 @@ namespace GymFlow.Aplicacion
 
         public ResumenCobro ObtenerResumenCobro(int clienteId)
         {
+            if (!Autorizacion.Tiene(_contextoUsuario, CodigosPermiso.CobroRegistrar))
+            {
+                return null;
+            }
+
             CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
             CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
 
