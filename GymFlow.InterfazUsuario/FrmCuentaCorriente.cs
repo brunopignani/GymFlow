@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using System;
 using System.Diagnostics;
@@ -51,16 +51,16 @@ namespace GymFlow.InterfazUsuario
             this.btnBuscar.Click += new EventHandler(this.btnBuscar_Click);
 
             this.lblCliente.Location = new Point(20, 60);
-            this.lblCliente.Size = new Size(600, 20);
+            this.lblCliente.Size = new Size(760, 20);
             this.lblCliente.Text = string.Empty;
 
             this.lblSaldo.Location = new Point(20, 85);
-            this.lblSaldo.Size = new Size(600, 20);
+            this.lblSaldo.Size = new Size(760, 20);
             this.lblSaldo.Text = string.Empty;
             this.lblSaldo.Font = new Font(this.lblSaldo.Font, FontStyle.Bold);
 
             this.dgvMovimientos.Location = new Point(20, 120);
-            this.dgvMovimientos.Size = new Size(600, 260);
+            this.dgvMovimientos.Size = new Size(760, 260);
             this.dgvMovimientos.ReadOnly = true;
             this.dgvMovimientos.AllowUserToAddRows = false;
             this.dgvMovimientos.RowHeadersVisible = false;
@@ -69,17 +69,25 @@ namespace GymFlow.InterfazUsuario
             this.dgvMovimientos.Columns.Add("colFecha", "Fecha");
             this.dgvMovimientos.Columns.Add("colTipo", "Tipo");
             this.dgvMovimientos.Columns.Add("colComprobante", "Comprobante");
+            this.dgvMovimientos.Columns.Add("colNumeroComprobante", "N° Comprobante");
             this.dgvMovimientos.Columns.Add("colMedioPago", "Medio de pago");
             this.dgvMovimientos.Columns.Add("colMotivo", "Motivo");
             this.dgvMovimientos.Columns.Add("colImporte", "Importe");
+            this.dgvMovimientos.Columns["colFecha"].FillWeight = 75;
+            this.dgvMovimientos.Columns["colTipo"].FillWeight = 65;
+            this.dgvMovimientos.Columns["colComprobante"].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.dgvMovimientos.Columns["colNumeroComprobante"].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.dgvMovimientos.Columns["colMedioPago"].FillWeight = 90;
+            this.dgvMovimientos.Columns["colMotivo"].FillWeight = 130;
+            this.dgvMovimientos.Columns["colImporte"].FillWeight = 80;
             this.dgvMovimientos.Columns["colImporte"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             this.lblMensaje.Location = new Point(20, 390);
-            this.lblMensaje.Size = new Size(600, 20);
+            this.lblMensaje.Size = new Size(760, 20);
             this.lblMensaje.Text = string.Empty;
 
             this.Text = "Cuenta corriente";
-            this.Size = new Size(660, 470);
+            this.Size = new Size(820, 470);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -137,6 +145,7 @@ namespace GymFlow.InterfazUsuario
                         movimiento.Fecha.ToString("dd/MM/yyyy"),
                         movimiento.TipoMovimiento.Nombre,
                         DescribirComprobante(movimiento.Comprobante),
+                        movimiento.Comprobante?.Numero ?? "—",
                         DescribirMedioPago(movimiento.Comprobante),
                         DescribirMotivo(movimiento.Comprobante),
                         movimiento.Importe.ToString("N2"));
@@ -184,6 +193,10 @@ namespace GymFlow.InterfazUsuario
             {
                 tipo = "Nota de crédito";
             }
+            else if (comprobante is AjusteCuenta)
+            {
+                tipo = "Ajuste de cuenta";
+            }
 
             return tipo + " " + comprobante.Numero;
         }
@@ -192,12 +205,19 @@ namespace GymFlow.InterfazUsuario
         {
             NotaCredito notaCredito = comprobante as NotaCredito;
 
-            if (notaCredito == null || string.IsNullOrEmpty(notaCredito.Motivo))
+            if (notaCredito != null && !string.IsNullOrEmpty(notaCredito.Motivo))
             {
-                return "—";
+                return notaCredito.Motivo;
             }
 
-            return notaCredito.Motivo;
+            AjusteCuenta ajuste = comprobante as AjusteCuenta;
+
+            if (ajuste != null && !string.IsNullOrEmpty(ajuste.Motivo))
+            {
+                return ajuste.Motivo;
+            }
+
+            return "—";
         }
 
         private string DescribirMedioPago(Comprobante comprobante)

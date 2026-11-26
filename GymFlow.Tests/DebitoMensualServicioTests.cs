@@ -185,5 +185,54 @@ namespace GymFlow.Tests
 
             Assert.AreEqual(3, datos.Comprobantes.Select(c => c.Numero).Distinct().Count());
         }
+
+        [TestMethod]
+        public void EmitirDebitosMensuales_ClientePendienteSinPrimeraActivacion_LoExcluyeYNoGeneraDebito()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            datos.CuotasCliente[0].FechaVencimiento = null;
+            datos.CuotasCliente[0].Estado = null;
+            DebitoMensualServicio servicio = CrearServicio(datos);
+
+            ResultadoDebitoMensual resultado = servicio.EmitirDebitosMensuales();
+
+            Assert.AreEqual(0, resultado.Emitidos);
+            Assert.AreEqual(0, resultado.YaEmitidos);
+            Assert.AreEqual(1, resultado.NoProcesados.Count);
+            Assert.AreEqual(1, resultado.Detalles.Count);
+            Assert.AreEqual("No procesado", resultado.Detalles[0].Resultado);
+            Assert.AreEqual("La cuota está pendiente de primera activación.", resultado.Detalles[0].Motivo);
+            Assert.AreEqual(0, datos.Comprobantes.Count);
+            Assert.AreEqual(0, datos.Movimientos.Count);
+            Assert.AreEqual(0, datos.TransaccionesIniciadas);
+        }
+
+        [TestMethod]
+        public void EmitirDebitosMensuales_ClientesActivoVencidoYPendiente_SoloDebitaActivados()
+        {
+            DatosEnMemoria datos = DatosEnMemoria.CrearBase();
+            // Cliente 1 en CrearBase está VENCIDO (FechaVencimiento = hoy - 3 días)
+            // Cliente 2: ACTIVO (FechaVencimiento = hoy + 10 días)
+            datos.Clientes.Add(new Cliente { Id = 2, Dni = 20111222, Nombre = "Luis", Apellido = "Sol" });
+            datos.Cuentas.Add(new CuentaCorriente { Id = 200, ClienteId = 2 });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 6, ClienteId = 2, CuotaId = 1, FechaVencimiento = DateTime.Today.AddDays(10), Estado = EstadosCliente.Activo });
+            // Cliente 3: PENDIENTE (nunca activado)
+            datos.Clientes.Add(new Cliente { Id = 3, Dni = 30111222, Nombre = "Eva", Apellido = "Rio" });
+            datos.Cuentas.Add(new CuentaCorriente { Id = 300, ClienteId = 3 });
+            datos.CuotasCliente.Add(new CuotaCliente { Id = 7, ClienteId = 3, CuotaId = 1, FechaVencimiento = null, Estado = null });
+
+            DebitoMensualServicio servicio = CrearServicio(datos);
+
+            ResultadoDebitoMensual resultado = servicio.EmitirDebitosMensuales();
+
+            Assert.AreEqual(2, resultado.Emitidos);
+            Assert.AreEqual(0, resultado.YaEmitidos);
+            Assert.AreEqual(1, resultado.NoProcesados.Count);
+            Assert.AreEqual(3, resultado.Detalles.Count);
+            Assert.AreEqual(2, datos.Comprobantes.OfType<NotaVenta>().Count());
+            Assert.AreEqual(2, datos.Movimientos.Count);
+            Assert.IsFalse(datos.Movimientos.Any(m => m.CuentaCorrienteId == 300));
+            Assert.AreEqual("No procesado", resultado.Detalles.Single(d => d.Dni == 30111222).Resultado);
+        }
     }
 }

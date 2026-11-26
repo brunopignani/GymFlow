@@ -1,15 +1,18 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace GymFlow.InterfazUsuario
 {
     public class FrmNotaCredito : Form
     {
+        private static readonly CultureInfo CulturaMonetaria = CultureInfo.GetCultureInfo("es-AR");
+
         private readonly ClienteServicio _clienteServicio;
         private readonly CuentaCorrienteServicio _cuentaCorrienteServicio;
         private readonly NotaCreditoServicio _notaCreditoServicio;
@@ -156,17 +159,7 @@ namespace GymFlow.InterfazUsuario
                     return;
                 }
 
-                List<NotaVenta> notasVenta = new List<NotaVenta>();
-
-                foreach (Movimiento movimiento in resumen.Movimientos)
-                {
-                    NotaVenta notaVenta = movimiento.Comprobante as NotaVenta;
-
-                    if (notaVenta != null)
-                    {
-                        notasVenta.Add(notaVenta);
-                    }
-                }
+                List<NotaVenta> notasVenta = ExtraerNotasVenta(resumen);
 
                 _clienteCargado = cliente;
                 this.lblCliente.Text = cliente.Apellido + " " + cliente.Nombre + " (DNI " + cliente.Dni + ")";
@@ -177,10 +170,7 @@ namespace GymFlow.InterfazUsuario
                     return;
                 }
 
-                this.cmbComprobantes.DataSource = notasVenta;
-                this.cmbComprobantes.DisplayMember = "Numero";
-                this.cmbComprobantes.ValueMember = "Id";
-                this.btnEmitir.Enabled = true;
+                MostrarNotasVenta(notasVenta, null);
             }
             catch (Exception ex)
             {
@@ -204,7 +194,73 @@ namespace GymFlow.InterfazUsuario
                 return;
             }
 
-            this.lblDetalleComprobante.Text = "Emitida el " + notaVenta.FechaEmision.ToString("dd/MM/yyyy") + " - Total: " + notaVenta.Total.ToString("N2");
+            string detalle = "Emitida el " + notaVenta.FechaEmision.ToString("dd/MM/yyyy") + " - Total: " + notaVenta.Total.ToString("N2", CulturaMonetaria);
+
+            if (_clienteCargado != null)
+            {
+                try
+                {
+                    decimal acreditable = _notaCreditoServicio.ObtenerImporteAcreditable(_clienteCargado.Id, notaVenta.Id);
+                    detalle += " - Acreditable: " + acreditable.ToString("N2", CulturaMonetaria);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.ToString());
+                }
+            }
+
+            this.lblDetalleComprobante.Text = detalle;
+        }
+
+        private static List<NotaVenta> ExtraerNotasVenta(ResumenCuentaCorriente resumen)
+        {
+            List<NotaVenta> notasVenta = new List<NotaVenta>();
+
+            foreach (Movimiento movimiento in resumen.Movimientos)
+            {
+                NotaVenta notaVenta = movimiento.Comprobante as NotaVenta;
+
+                if (notaVenta != null && !notasVenta.Exists(n => n.Id == notaVenta.Id))
+                {
+                    notasVenta.Add(notaVenta);
+                }
+            }
+
+            return notasVenta;
+        }
+
+        private void MostrarNotasVenta(List<NotaVenta> notasVenta, int? seleccionarId)
+        {
+            this.cmbComprobantes.DataSource = null;
+            this.cmbComprobantes.DataSource = notasVenta;
+            this.cmbComprobantes.DisplayMember = "Numero";
+            this.cmbComprobantes.ValueMember = "Id";
+
+            if (seleccionarId.HasValue)
+            {
+                NotaVenta previa = notasVenta.Find(n => n.Id == seleccionarId.Value);
+
+                if (previa != null)
+                {
+                    this.cmbComprobantes.SelectedItem = previa;
+                }
+            }
+
+            cmbComprobantes_SelectedIndexChanged(this.cmbComprobantes, EventArgs.Empty);
+            this.btnEmitir.Enabled = notasVenta.Count > 0;
+        }
+
+        private void RecargarNotasVenta(int notaVentaSeleccionadaId)
+        {
+            ResumenCuentaCorriente resumen = _cuentaCorrienteServicio.ConsultarCuentaCorriente(_clienteCargado.Id);
+
+            if (resumen == null)
+            {
+                LimpiarCliente();
+                return;
+            }
+
+            MostrarNotasVenta(ExtraerNotasVenta(resumen), notaVentaSeleccionadaId);
         }
 
         private void btnEmitir_Click(object sender, EventArgs e)
@@ -218,7 +274,7 @@ namespace GymFlow.InterfazUsuario
 
             decimal importe;
 
-            if (!decimal.TryParse(this.txtImporte.Text, out importe) || importe <= 0)
+            if (!decimal.TryParse(this.txtImporte.Text, NumberStyles.Currency, CulturaMonetaria, out importe) || importe <= 0)
             {
                 MessageBox.Show("Ingrese un importe mayor a cero.", "Nota de crédito", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 this.txtImporte.Focus();
@@ -234,8 +290,8 @@ namespace GymFlow.InterfazUsuario
                 return;
             }
 
-            string pregunta = "Se emitirá una nota de crédito por " + importe.ToString("N2")
-                + " sobre la nota de venta " + notaVenta.Numero + " (total " + notaVenta.Total.ToString("N2") + ")" + Environment.NewLine
+            string pregunta = "Se emitirá una nota de crédito por " + importe.ToString("N2", CulturaMonetaria)
+                + " sobre la nota de venta " + notaVenta.Numero + " (total " + notaVenta.Total.ToString("N2", CulturaMonetaria) + ")" + Environment.NewLine
                 + "Cliente: " + this.lblCliente.Text + Environment.NewLine
                 + "Motivo: " + motivo + Environment.NewLine + Environment.NewLine
                 + "¿Confirma la operación?";
@@ -264,6 +320,9 @@ namespace GymFlow.InterfazUsuario
 
                 this.txtImporte.Text = string.Empty;
                 this.txtMotivo.Text = string.Empty;
+
+                int notaVentaId = notaVenta.Id;
+                RecargarNotasVenta(notaVentaId);
             }
             catch (Exception ex)
             {
@@ -273,7 +332,7 @@ namespace GymFlow.InterfazUsuario
             finally
             {
                 this.Cursor = Cursors.Default;
-                this.btnEmitir.Enabled = true;
+                this.btnEmitir.Enabled = _clienteCargado != null && this.cmbComprobantes.Items.Count > 0;
             }
         }
 

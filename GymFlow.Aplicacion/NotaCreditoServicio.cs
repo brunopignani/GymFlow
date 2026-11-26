@@ -111,6 +111,26 @@ namespace GymFlow.Aplicacion
             }
         }
 
+        public decimal ObtenerImporteAcreditable(int clienteId, int notaVentaId)
+        {
+            CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
+
+            if (cuenta == null)
+            {
+                return 0m;
+            }
+
+            NotaVenta notaVenta = BuscarNotaVentaDeLaCuenta(cuenta.Id, notaVentaId);
+
+            if (notaVenta == null)
+            {
+                return 0m;
+            }
+
+            decimal acreditado = _comprobanteRepositorio.GetTotalNotasCreditoByNotaVenta(notaVenta.Id);
+            return Math.Max(0m, notaVenta.Total - acreditado);
+        }
+
         private NotaVenta BuscarNotaVentaDeLaCuenta(int cuentaId, int comprobanteId)
         {
             List<Movimiento> movimientos = _movimientoRepositorio.GetMovimientosByCuenta(cuentaId);

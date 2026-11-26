@@ -1,4 +1,4 @@
-using GymFlow.Abstracciones;
+﻿using GymFlow.Abstracciones;
 using GymFlow.Aplicacion;
 using GymFlow.ContextoBD;
 using GymFlow.Repositorio;
@@ -34,6 +34,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<IMovimientoRepositorio, MovimientoRepositorio>();
             servicios.AddScoped<ITipoMovimientoRepositorio, TipoMovimientoRepositorio>();
             servicios.AddScoped<IComprobanteRepositorio, ComprobanteRepositorio>();
+            servicios.AddScoped<IAjusteCuentaRepositorio, AjusteCuentaRepositorio>();
             servicios.AddScoped<ITransaccionBD, TransaccionBD>();
 
             servicios.AddScoped<InscripcionServicio>();
@@ -43,12 +44,13 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<CobroServicio>();
             servicios.AddScoped<DebitoMensualServicio>();
             servicios.AddScoped<NotaCreditoServicio>();
+            servicios.AddScoped<AjusteCuentaServicio>();
             servicios.AddScoped<UsuarioServicio>();
 
             servicios.AddTransient<FrmLogin>();
             servicios.AddTransient<FrmPrincipal>();
             servicios.AddTransient<FrmAutoingreso>();
-            servicios.AddTransient<FrmRecepcion>();
+            servicios.AddTransient<FrmInscripciones>();
             servicios.AddTransient<FrmClientes>();
             servicios.AddTransient<FrmActividades>();
             servicios.AddTransient<FrmBajaMorosos>();
@@ -56,6 +58,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddTransient<FrmCobro>();
             servicios.AddTransient<FrmDebitoMensual>();
             servicios.AddTransient<FrmNotaCredito>();
+            servicios.AddTransient<FrmAjusteCuenta>();
             servicios.AddTransient<FrmUsuarios>();
             servicios.AddTransient<FrmCambiarClave>();
 

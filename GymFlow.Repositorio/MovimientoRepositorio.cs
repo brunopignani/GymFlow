@@ -29,6 +29,7 @@ namespace GymFlow.Repositorio
                 .Include(m => m.Comprobante)
                 .Where(m => m.CuentaCorrienteId == cuentaId)
                 .OrderBy(m => m.Fecha)
+                .ThenBy(m => m.Id)
                 .ToList();
         }
 

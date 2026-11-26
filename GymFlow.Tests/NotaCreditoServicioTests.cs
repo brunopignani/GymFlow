@@ -1,4 +1,4 @@
-using GymFlow.Aplicacion;
+﻿using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -173,6 +173,19 @@ namespace GymFlow.Tests
             Assert.AreEqual(0, datos.Confirmadas);
             Assert.AreEqual(0, datos.Comprobantes.OfType<NotaCredito>().Count());
             Assert.AreEqual(1, datos.Movimientos.Count);
+        }
+
+        [TestMethod]
+        public void ObtenerImporteAcreditable_DescuentaLasNotasDeCreditoEmitidas()
+        {
+            DatosEnMemoria datos = CrearConNotaVenta();
+            NotaCreditoServicio servicio = CrearServicio(datos);
+
+            Assert.AreEqual(1000m, servicio.ObtenerImporteAcreditable(1, 1));
+            Assert.IsTrue(servicio.EmitirNotaCredito(1, 1, 300m, "Parcial"));
+            Assert.AreEqual(700m, servicio.ObtenerImporteAcreditable(1, 1));
+            Assert.AreEqual(0m, servicio.ObtenerImporteAcreditable(1, 999));
+            Assert.AreEqual(0m, servicio.ObtenerImporteAcreditable(77, 1));
         }
     }
 }

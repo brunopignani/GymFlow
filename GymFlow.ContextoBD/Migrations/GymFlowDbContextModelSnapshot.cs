@@ -275,6 +275,23 @@ namespace GymFlow.ContextoBD.Migrations
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("GymFlow.Dominio.AjusteCuenta", b =>
+                {
+                    b.HasBaseType("GymFlow.Dominio.Comprobante");
+
+                    b.Property<int>("EmpleadoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasIndex("EmpleadoId");
+
+                    b.ToTable("T_AJUSTE_CUENTA", (string)null);
+                });
+
             modelBuilder.Entity("GymFlow.Dominio.NotaCredito", b =>
                 {
                     b.HasBaseType("GymFlow.Dominio.Comprobante");
@@ -417,6 +434,23 @@ namespace GymFlow.ContextoBD.Migrations
                         .HasForeignKey("GymFlow.Dominio.Persona", "UsuarioId");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("GymFlow.Dominio.AjusteCuenta", b =>
+                {
+                    b.HasOne("GymFlow.Dominio.Empleado", "Empleado")
+                        .WithMany()
+                        .HasForeignKey("EmpleadoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GymFlow.Dominio.Comprobante", null)
+                        .WithOne()
+                        .HasForeignKey("GymFlow.Dominio.AjusteCuenta", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Empleado");
                 });
 
             modelBuilder.Entity("GymFlow.Dominio.NotaCredito", b =>

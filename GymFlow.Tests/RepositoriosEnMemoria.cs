@@ -29,6 +29,7 @@ namespace GymFlow.Tests
         public int SiguienteNumeroRecibo = 1;
         public int SiguienteNumeroNotaVenta = 1;
         public int SiguienteNumeroNotaCredito = 1;
+        public int SiguienteNumeroAjusteCuenta = 1;
 
         public bool FallarAlGuardarMovimiento;
         public bool RechazarGuardarComprobante;
@@ -128,6 +129,7 @@ namespace GymFlow.Tests
             List<Movimiento> movimientos = _datos.Movimientos
                 .Where(m => m.CuentaCorrienteId == cuentaId)
                 .OrderBy(m => m.Fecha)
+                .ThenBy(m => m.Id)
                 .ToList();
 
             foreach (Movimiento movimiento in movimientos)
@@ -245,6 +247,33 @@ namespace GymFlow.Tests
             return _datos.Comprobantes
                 .OfType<NotaVenta>()
                 .Any(nv => cuotaClienteIds.Contains(nv.CuotaClienteId));
+        }
+    }
+
+    public class AjusteCuentaRepositorioEnMemoria : IAjusteCuentaRepositorio
+    {
+        private readonly DatosEnMemoria _datos;
+
+        public AjusteCuentaRepositorioEnMemoria(DatosEnMemoria datos)
+        {
+            _datos = datos;
+        }
+
+        public bool AddAjusteCuenta(AjusteCuenta ajuste)
+        {
+            if (_datos.RechazarGuardarComprobante)
+            {
+                return false;
+            }
+
+            ajuste.Id = _datos.Comprobantes.Count + 1;
+            _datos.Comprobantes.Add(ajuste);
+            return true;
+        }
+
+        public int ObtenerSiguienteNumero()
+        {
+            return _datos.SiguienteNumeroAjusteCuenta++;
         }
     }
 

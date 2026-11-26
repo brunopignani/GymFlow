@@ -76,6 +76,12 @@ namespace GymFlow.Aplicacion
                     continue;
                 }
 
+                if (!cuotaCliente.FechaVencimiento.HasValue)
+                {
+                    AgregarNoProcesado(resultado, cliente, "La cuota está pendiente de primera activación.");
+                    continue;
+                }
+
                 Cuota cuota = _cuotaRepositorio.GetCuotaById(cuotaCliente.CuotaId);
 
                 if (cuota == null || cuota.Precio <= 0)

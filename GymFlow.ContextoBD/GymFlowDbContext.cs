@@ -24,6 +24,7 @@ namespace GymFlow.ContextoBD
         public DbSet<ReciboPago> RecibosPago { get; set; }
         public DbSet<NotaCredito> NotasCredito { get; set; }
         public DbSet<NotaVenta> NotasVenta { get; set; }
+        public DbSet<AjusteCuenta> AjustesCuenta { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -51,6 +52,14 @@ namespace GymFlow.ContextoBD
             modelBuilder.Entity<ReciboPago>().ToTable("T_RECIBO_PAGO");
             modelBuilder.Entity<NotaCredito>().ToTable("T_NOTA_CREDITO");
             modelBuilder.Entity<NotaVenta>().ToTable("T_NOTA_VENTA");
+            modelBuilder.Entity<AjusteCuenta>().ToTable("T_AJUSTE_CUENTA");
+
+            modelBuilder.Entity<AjusteCuenta>().Property(a => a.Motivo).HasMaxLength(500).IsRequired();
+            modelBuilder.Entity<AjusteCuenta>()
+                .HasOne(a => a.Empleado)
+                .WithMany()
+                .HasForeignKey(a => a.EmpleadoId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Persona>()
                 .HasIndex(p => p.Dni)

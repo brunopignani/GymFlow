@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -25,7 +25,7 @@ namespace GymFlow.InterfazUsuario
             this.lblBienvenida = new Label();
 
             ToolStripMenuItem menuMostrador = new ToolStripMenuItem("Mostrador");
-            menuMostrador.DropDownItems.Add(CrearItem("Inscribir a actividad", new EventHandler(this.itemRecepcion_Click)));
+            menuMostrador.DropDownItems.Add(CrearItem("Inscribir a actividad", new EventHandler(this.itemInscripciones_Click)));
             menuMostrador.DropDownItems.Add(CrearItem("Autoingreso", new EventHandler(this.itemAutoingreso_Click)));
 
             ToolStripMenuItem menuGestion = new ToolStripMenuItem("Gestión");
@@ -40,6 +40,7 @@ namespace GymFlow.InterfazUsuario
             menuFinanzas.DropDownItems.Add(CrearItem("Registrar cobro", new EventHandler(this.itemCobro_Click)));
             menuFinanzas.DropDownItems.Add(CrearItem("Cuenta corriente", new EventHandler(this.itemCuentaCorriente_Click)));
             menuFinanzas.DropDownItems.Add(CrearItem("Nota de crédito", new EventHandler(this.itemNotaCredito_Click)));
+            menuFinanzas.DropDownItems.Add(CrearItem("Ajuste de cuenta", new EventHandler(this.itemAjusteCuenta_Click)));
             menuFinanzas.DropDownItems.Add(menuProcesosMasivos);
 
             ToolStripMenuItem menuSeguridad = new ToolStripMenuItem("Seguridad");
@@ -96,9 +97,9 @@ namespace GymFlow.InterfazUsuario
             Abrir<FrmActividades>();
         }
 
-        private void itemRecepcion_Click(object sender, EventArgs e)
+        private void itemInscripciones_Click(object sender, EventArgs e)
         {
-            Abrir<FrmRecepcion>();
+            Abrir<FrmInscripciones>();
         }
 
         private void itemBajaMorosos_Click(object sender, EventArgs e)
@@ -124,6 +125,11 @@ namespace GymFlow.InterfazUsuario
         private void itemNotaCredito_Click(object sender, EventArgs e)
         {
             Abrir<FrmNotaCredito>();
+        }
+
+        private void itemAjusteCuenta_Click(object sender, EventArgs e)
+        {
+            Abrir<FrmAjusteCuenta>();
         }
 
         private void itemUsuarios_Click(object sender, EventArgs e)

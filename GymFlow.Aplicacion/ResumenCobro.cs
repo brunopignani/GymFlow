@@ -12,5 +12,11 @@ namespace GymFlow.Aplicacion
         public bool NotaVentaContabilizada { get; set; }
         public bool TieneInconsistenciaContable { get; set; }
         public NotaVenta NotaVentaDelPeriodo { get; set; }
+        public string EstadoCuota { get; set; }
+        public MotivoBloqueoCobro MotivoBloqueo { get; set; }
+        public bool PermiteRegistrarCobro
+        {
+            get { return MotivoBloqueo == MotivoBloqueoCobro.Ninguno; }
+        }
     }
 }

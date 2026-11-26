@@ -14,8 +14,17 @@ namespace GymFlow.InterfazUsuario
         private readonly ClienteServicio _clienteServicio;
 
         private List<EstadoCliente> _estadosClientes;
+        private List<EstadoCliente> _estadosMostrados;
 
+        private Label lblFiltroEstado;
         private ComboBox cmbFiltro;
+        private Label lblFiltroDni;
+        private TextBox txtFiltroDni;
+        private Label lblFiltroNombre;
+        private TextBox txtFiltroNombre;
+        private Label lblFiltroApellido;
+        private TextBox txtFiltroApellido;
+        private Button btnLimpiarFiltros;
         private Label lblResumen;
         private DataGridView dgvClientes;
         private Label lblDni;
@@ -37,6 +46,7 @@ namespace GymFlow.InterfazUsuario
         {
             _clienteServicio = clienteServicio;
             _estadosClientes = new List<EstadoCliente>();
+            _estadosMostrados = new List<EstadoCliente>();
 
             InitializeComponent();
             CargarClientes();
@@ -44,7 +54,15 @@ namespace GymFlow.InterfazUsuario
 
         private void InitializeComponent()
         {
+            this.lblFiltroEstado = new Label();
             this.cmbFiltro = new ComboBox();
+            this.lblFiltroDni = new Label();
+            this.txtFiltroDni = new TextBox();
+            this.lblFiltroNombre = new Label();
+            this.txtFiltroNombre = new TextBox();
+            this.lblFiltroApellido = new Label();
+            this.txtFiltroApellido = new TextBox();
+            this.btnLimpiarFiltros = new Button();
             this.lblResumen = new Label();
             this.dgvClientes = new DataGridView();
             this.lblDni = new Label();
@@ -62,9 +80,13 @@ namespace GymFlow.InterfazUsuario
             this.btnBaja = new Button();
             this.btnLimpiar = new Button();
 
-            // Filtro y resumen
-            this.cmbFiltro.Location = new Point(20, 20);
-            this.cmbFiltro.Size = new Size(160, 21);
+            // Filtros y resumen
+            this.lblFiltroEstado.Location = new Point(20, 21);
+            this.lblFiltroEstado.Size = new Size(50, 20);
+            this.lblFiltroEstado.Text = "Estado:";
+
+            this.cmbFiltro.Location = new Point(75, 18);
+            this.cmbFiltro.Size = new Size(130, 21);
             this.cmbFiltro.DropDownStyle = ComboBoxStyle.DropDownList;
             this.cmbFiltro.Items.Add("Todos");
             this.cmbFiltro.Items.Add(EstadosCliente.Activo);
@@ -72,15 +94,44 @@ namespace GymFlow.InterfazUsuario
             this.cmbFiltro.Items.Add(EstadosCliente.Pendiente);
             this.cmbFiltro.Items.Add(EstadosCliente.SinCuota);
             this.cmbFiltro.SelectedIndex = 0;
-            this.cmbFiltro.SelectedIndexChanged += new EventHandler(this.cmbFiltro_SelectedIndexChanged);
+            this.cmbFiltro.SelectedIndexChanged += new EventHandler(this.Filtros_Changed);
 
-            this.lblResumen.Location = new Point(195, 23);
-            this.lblResumen.Size = new Size(480, 20);
+            this.lblFiltroDni.Location = new Point(220, 21);
+            this.lblFiltroDni.Size = new Size(35, 20);
+            this.lblFiltroDni.Text = "DNI:";
+
+            this.txtFiltroDni.Location = new Point(260, 18);
+            this.txtFiltroDni.Size = new Size(130, 20);
+            this.txtFiltroDni.TextChanged += new EventHandler(this.Filtros_Changed);
+
+            this.btnLimpiarFiltros.Location = new Point(608, 16);
+            this.btnLimpiarFiltros.Size = new Size(112, 25);
+            this.btnLimpiarFiltros.Text = "Limpiar filtros";
+            this.btnLimpiarFiltros.Click += new EventHandler(this.btnLimpiarFiltros_Click);
+
+            this.lblFiltroNombre.Location = new Point(20, 51);
+            this.lblFiltroNombre.Size = new Size(55, 20);
+            this.lblFiltroNombre.Text = "Nombre:";
+
+            this.txtFiltroNombre.Location = new Point(75, 48);
+            this.txtFiltroNombre.Size = new Size(180, 20);
+            this.txtFiltroNombre.TextChanged += new EventHandler(this.Filtros_Changed);
+
+            this.lblFiltroApellido.Location = new Point(275, 51);
+            this.lblFiltroApellido.Size = new Size(55, 20);
+            this.lblFiltroApellido.Text = "Apellido:";
+
+            this.txtFiltroApellido.Location = new Point(335, 48);
+            this.txtFiltroApellido.Size = new Size(180, 20);
+            this.txtFiltroApellido.TextChanged += new EventHandler(this.Filtros_Changed);
+
+            this.lblResumen.Location = new Point(20, 78);
+            this.lblResumen.Size = new Size(700, 20);
             this.lblResumen.Text = string.Empty;
 
             // Grilla
-            this.dgvClientes.Location = new Point(20, 48);
-            this.dgvClientes.Size = new Size(700, 220);
+            this.dgvClientes.Location = new Point(20, 102);
+            this.dgvClientes.Size = new Size(700, 215);
             this.dgvClientes.ReadOnly = true;
             this.dgvClientes.AllowUserToAddRows = false;
             this.dgvClientes.RowHeadersVisible = false;
@@ -94,38 +145,46 @@ namespace GymFlow.InterfazUsuario
             this.dgvClientes.Columns.Add("colVencimiento", "Vencimiento");
             this.dgvClientes.SelectionChanged += new EventHandler(this.dgvClientes_SelectionChanged);
 
-            AgregarCampo(this.lblDni, this.txtDni, "DNI:", 20, 285);
-            AgregarCampo(this.lblNombre, this.txtNombre, "Nombre:", 20, 315);
-            AgregarCampo(this.lblApellido, this.txtApellido, "Apellido:", 380, 285);
-            AgregarCampo(this.lblTelefono, this.txtTelefono, "Teléfono:", 380, 315);
+            AgregarCampo(this.lblDni, this.txtDni, "DNI:", 20, 332);
+            AgregarCampo(this.lblNombre, this.txtNombre, "Nombre:", 20, 362);
+            AgregarCampo(this.lblApellido, this.txtApellido, "Apellido:", 380, 332);
+            AgregarCampo(this.lblTelefono, this.txtTelefono, "Teléfono:", 380, 362);
 
-            this.btnAlta.Location = new Point(20, 350);
+            this.btnAlta.Location = new Point(20, 398);
             this.btnAlta.Size = new Size(100, 30);
             this.btnAlta.Text = "Alta";
             this.btnAlta.Click += new EventHandler(this.btnAlta_Click);
 
-            this.btnModificar.Location = new Point(130, 350);
+            this.btnModificar.Location = new Point(130, 398);
             this.btnModificar.Size = new Size(100, 30);
             this.btnModificar.Text = "Modificar";
             this.btnModificar.Click += new EventHandler(this.btnModificar_Click);
 
-            this.btnBaja.Location = new Point(240, 350);
+            this.btnBaja.Location = new Point(240, 398);
             this.btnBaja.Size = new Size(100, 30);
             this.btnBaja.Text = "Baja";
             this.btnBaja.Click += new EventHandler(this.btnBaja_Click);
 
-            this.btnLimpiar.Location = new Point(350, 350);
+            this.btnLimpiar.Location = new Point(350, 398);
             this.btnLimpiar.Size = new Size(100, 30);
             this.btnLimpiar.Text = "Limpiar";
             this.btnLimpiar.Click += new EventHandler(this.btnLimpiar_Click);
 
             this.Text = "Gestionar clientes";
-            this.Size = new Size(760, 440);
+            this.Size = new Size(760, 490);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
 
+            this.Controls.Add(this.lblFiltroEstado);
             this.Controls.Add(this.cmbFiltro);
+            this.Controls.Add(this.lblFiltroDni);
+            this.Controls.Add(this.txtFiltroDni);
+            this.Controls.Add(this.lblFiltroNombre);
+            this.Controls.Add(this.txtFiltroNombre);
+            this.Controls.Add(this.lblFiltroApellido);
+            this.Controls.Add(this.txtFiltroApellido);
+            this.Controls.Add(this.btnLimpiarFiltros);
             this.Controls.Add(this.lblResumen);
             this.Controls.Add(this.dgvClientes);
             this.Controls.Add(this.btnAlta);
@@ -168,15 +227,40 @@ namespace GymFlow.InterfazUsuario
             this.dgvClientes.Rows.Clear();
             LimpiarCampos();
 
-            string filtro = this.cmbFiltro.SelectedItem as string;
+            string filtroEstado = this.cmbFiltro.SelectedItem as string;
+            string filtroDni = this.txtFiltroDni.Text.Trim();
+            string filtroNombre = this.txtFiltroNombre.Text.Trim();
+            string filtroApellido = this.txtFiltroApellido.Text.Trim();
 
-            List<EstadoCliente> mostrar = (filtro == "Todos"
-                ? _estadosClientes
-                : _estadosClientes.Where(e => e.Estado == filtro).ToList())
+            IEnumerable<EstadoCliente> consulta = _estadosClientes;
+
+            if (!string.IsNullOrEmpty(filtroEstado) && filtroEstado != "Todos")
+            {
+                consulta = consulta.Where(e => e.Estado == filtroEstado);
+            }
+
+            if (filtroDni.Length > 0)
+            {
+                consulta = consulta.Where(e => e.Cliente.Dni.ToString().Contains(filtroDni));
+            }
+
+            if (filtroNombre.Length > 0)
+            {
+                consulta = consulta.Where(e => e.Cliente.Nombre != null
+                    && e.Cliente.Nombre.IndexOf(filtroNombre, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            if (filtroApellido.Length > 0)
+            {
+                consulta = consulta.Where(e => e.Cliente.Apellido != null
+                    && e.Cliente.Apellido.IndexOf(filtroApellido, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            _estadosMostrados = consulta
                 .OrderByDescending(e => e.Cliente.Id)
                 .ToList();
 
-            foreach (EstadoCliente estado in mostrar)
+            foreach (EstadoCliente estado in _estadosMostrados)
             {
                 Cliente c = estado.Cliente;
                 string estadoTexto = estado.Estado;
@@ -198,7 +282,7 @@ namespace GymFlow.InterfazUsuario
                 this.dgvClientes.Rows.Add(c.Dni, c.Apellido, c.Nombre, c.Telefono, estadoTexto, vencimiento);
             }
 
-            this.lblResumen.Text = "Mostrando " + mostrar.Count + " de " + _estadosClientes.Count + " clientes";
+            this.lblResumen.Text = "Mostrando " + _estadosMostrados.Count + " de " + _estadosClientes.Count + " clientes";
         }
 
         private void LimpiarCampos()
@@ -217,20 +301,13 @@ namespace GymFlow.InterfazUsuario
             }
 
             int indice = this.dgvClientes.CurrentRow.Index;
-            string filtro = this.cmbFiltro.SelectedItem as string;
 
-            List<EstadoCliente> mostrar = (filtro == "Todos"
-                ? _estadosClientes
-                : _estadosClientes.Where(e => e.Estado == filtro).ToList())
-                .OrderByDescending(e => e.Cliente.Id)
-                .ToList();
-
-            if (indice < 0 || indice >= mostrar.Count)
+            if (indice < 0 || indice >= _estadosMostrados.Count)
             {
                 return null;
             }
 
-            return mostrar[indice];
+            return _estadosMostrados[indice];
         }
 
         private bool LeerCampos(Cliente cliente)
@@ -273,9 +350,17 @@ namespace GymFlow.InterfazUsuario
             return true;
         }
 
-        private void cmbFiltro_SelectedIndexChanged(object sender, EventArgs e)
+        private void Filtros_Changed(object sender, EventArgs e)
         {
             AplicarFiltro();
+        }
+
+        private void btnLimpiarFiltros_Click(object sender, EventArgs e)
+        {
+            this.cmbFiltro.SelectedIndex = 0;
+            this.txtFiltroDni.Text = string.Empty;
+            this.txtFiltroNombre.Text = string.Empty;
+            this.txtFiltroApellido.Text = string.Empty;
         }
 
         private void dgvClientes_SelectionChanged(object sender, EventArgs e)

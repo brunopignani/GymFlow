@@ -87,23 +87,10 @@ namespace GymFlow.Aplicacion
                     return false;
                 }
 
-                string estado = ClienteServicio.DeterminarEstadoCuota(cuotaCliente, hoy);
-
-                if (estado == EstadosCliente.Activo)
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                if (estado != EstadosCliente.Pendiente && estado != EstadosCliente.Vencido)
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
                 ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
 
-                if (resumen == null || resumen.TieneInconsistenciaContable || resumen.MinimoExigible <= 0m || importe < resumen.MinimoExigible)
+                // Regla: el cobro debe ser exactamente igual al mínimo exigible (sin cobros parciales ni anticipados).
+                if (resumen == null || !resumen.PermiteRegistrarCobro || resumen.MinimoExigible <= 0m || importe != resumen.MinimoExigible)
                 {
                     _transaccion.RevertirTransaccion();
                     return false;
@@ -206,101 +193,6 @@ namespace GymFlow.Aplicacion
             return ObtenerResumenCobro(cuenta, cuotaCliente, DateTime.Today);
         }
 
-        public bool AplicarSaldoAFavor(int clienteId)
-        {
-            DateTime hoy = DateTime.Today;
-
-            try
-            {
-                _transaccion.IniciarTransaccion(System.Data.IsolationLevel.Serializable);
-
-                CuentaCorriente cuenta = _cuentaCorrienteRepositorio.GetCuentaCorrienteByCliente(clienteId);
-                CuotaCliente cuotaCliente = _cuotaClienteRepositorio.GetCuotaActivaByCliente(clienteId);
-                TipoMovimiento tipoDebito = _tipoMovimientoRepositorio.GetAllTiposMovimiento()
-                    .FirstOrDefault(t => t.Nombre == NombresTipoMovimiento.Debito);
-                Cuota cuota = cuotaCliente == null ? null : _cuotaRepositorio.GetCuotaById(cuotaCliente.CuotaId);
-
-                if (cuenta == null || cuotaCliente == null || cuota == null || cuota.Precio <= 0 || tipoDebito == null)
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                string estado = ClienteServicio.DeterminarEstadoCuota(cuotaCliente, hoy);
-
-                if (estado == EstadosCliente.Activo
-                    || (estado != EstadosCliente.Pendiente && estado != EstadosCliente.Vencido))
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                ResumenCobro resumen = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
-
-                if (resumen == null || resumen.TieneInconsistenciaContable || resumen.MinimoExigible > 0m)
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                if (resumen.TieneNotaVentaDelPeriodo && resumen.NotaVentaContabilizada)
-                {
-                    // Caso 1: Débito completo ya registrado. No generar nada.
-                }
-                else if (!resumen.TieneNotaVentaDelPeriodo)
-                {
-                    // Caso 2: Sin NV. Usar DebitoMensualServicio para emitir NV y débito.
-                    if (!_debitoMensualServicio.AsegurarNotaVentaDelPeriodo(cuenta, cuotaCliente, cuota.Precio, tipoDebito, hoy))
-                    {
-                        _transaccion.RevertirTransaccion();
-                        return false;
-                    }
-                }
-                else
-                {
-                    // Caso 3: NV huérfana. Registrar solo el débito faltante por notaVenta.Total.
-                    Movimiento movimiento = new Movimiento
-                    {
-                        Fecha = hoy,
-                        Importe = resumen.NotaVentaDelPeriodo.Total,
-                        TipoMovimientoId = tipoDebito.Id,
-                        ComprobanteId = resumen.NotaVentaDelPeriodo.Id,
-                        CuentaCorrienteId = cuenta.Id
-                    };
-                    if (!_movimientoRepositorio.AddMovimiento(movimiento))
-                    {
-                        _transaccion.RevertirTransaccion();
-                        return false;
-                    }
-                }
-
-                ResumenCobro resumenFinal = ObtenerResumenCobro(cuenta, cuotaCliente, hoy);
-
-                if (resumenFinal == null || resumenFinal.TieneInconsistenciaContable || resumenFinal.MinimoExigible > 0m || resumenFinal.Saldo > 0m)
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                cuotaCliente.FechaVencimiento = hoy.AddDays(30);
-                cuotaCliente.Estado = EstadosCliente.Activo;
-
-                if (!_cuotaClienteRepositorio.UpdateCuotaCliente(cuotaCliente))
-                {
-                    _transaccion.RevertirTransaccion();
-                    return false;
-                }
-
-                _transaccion.ConfirmarTransaccion();
-                return true;
-            }
-            catch
-            {
-                _transaccion.RevertirTransaccion();
-                throw;
-            }
-        }
-
         private ResumenCobro ObtenerResumenCobro(CuentaCorriente cuenta, CuotaCliente cuotaCliente, DateTime fecha)
         {
             Cuota cuota = _cuotaRepositorio.GetCuotaById(cuotaCliente.CuotaId);
@@ -367,8 +259,34 @@ namespace GymFlow.Aplicacion
                 minimo = Math.Max(0m, saldo + deudaPendiente);
             }
 
+            string estadoCuota = ClienteServicio.DeterminarEstadoCuota(cuotaCliente, fecha);
+            MotivoBloqueoCobro motivoBloqueo;
+
+            if (inconsistencia)
+            {
+                motivoBloqueo = MotivoBloqueoCobro.InconsistenciaContable;
+            }
+            else if (estadoCuota == EstadosCliente.Activo)
+            {
+                motivoBloqueo = MotivoBloqueoCobro.CuotaVigente;
+            }
+            else if (estadoCuota != EstadosCliente.Pendiente && estadoCuota != EstadosCliente.Vencido)
+            {
+                motivoBloqueo = MotivoBloqueoCobro.EstadoCuotaNoCobrable;
+            }
+            else if (minimo <= 0m)
+            {
+                motivoBloqueo = MotivoBloqueoCobro.SaldoAFavorCubreCuota;
+            }
+            else
+            {
+                motivoBloqueo = MotivoBloqueoCobro.Ninguno;
+            }
+
             return new ResumenCobro
             {
+                EstadoCuota = estadoCuota,
+                MotivoBloqueo = motivoBloqueo,
                 CuotaCliente = cuotaCliente,
                 PrecioCuota = cuota.Precio,
                 Saldo = saldo,
