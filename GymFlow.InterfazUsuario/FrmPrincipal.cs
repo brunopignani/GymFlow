@@ -1,4 +1,4 @@
-﻿using GymFlow.Aplicacion;
+using GymFlow.Aplicacion;
 using GymFlow.Dominio;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -67,6 +67,7 @@ namespace GymFlow.InterfazUsuario
             this.menuSeguridad.DropDownItems.Add(CrearItem("Gestionar usuarios", new EventHandler(this.itemUsuarios_Click), CodigosPermiso.UsuariosGestionar));
             this.menuSeguridad.DropDownItems.Add(CrearItem("Gestionar grupos", new EventHandler(this.itemGrupos_Click), CodigosPermiso.GruposGestionar));
             this.menuSeguridad.DropDownItems.Add(CrearItem("Auditoría", new EventHandler(this.itemAuditoria_Click), CodigosPermiso.AuditoriaVer));
+            this.menuSeguridad.DropDownItems.Add(CrearItem("Resguardo y restauración", new EventHandler(this.itemRespaldo_Click), CodigosPermiso.RespaldoGestionar));
             this.menuSeguridad.DropDownItems.Add(CrearItem("Cambiar contraseña", new EventHandler(this.itemCambiarClave_Click)));
             this.menuSeguridad.DropDownItems.Add(CrearItem("Cerrar sesión", new EventHandler(this.itemCerrarSesion_Click)));
 
@@ -250,6 +251,18 @@ namespace GymFlow.InterfazUsuario
         private void itemAuditoria_Click(object sender, EventArgs e)
         {
             Abrir<FrmAuditoria>();
+        }
+
+        private void itemRespaldo_Click(object sender, EventArgs e)
+        {
+            Abrir<FrmRespaldo>();
+        }
+
+        public void CerrarSesionPostRestauracion()
+        {
+            _logoutRegistrado = true;
+            SesionActual.CerrarSesion();
+            this.Close();
         }
 
         private void itemCambiarClave_Click(object sender, EventArgs e)

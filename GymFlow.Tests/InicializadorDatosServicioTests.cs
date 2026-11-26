@@ -41,12 +41,12 @@ namespace GymFlow.Tests
             Assert.AreEqual(CuotaServicio.NombreCuotaMensual, mensual.Nombre);
             Assert.AreEqual(15000m, mensual.Precio);
 
-            // Módulos, formularios y 14 acciones
+            // Módulos, formularios y 15 acciones
             CollectionAssert.AreEquivalent(
                 new[] { "Mostrador", "Gestión", "Finanzas", "Seguridad" },
                 datos.Modulos.Select(m => m.Nombre).ToList());
-            Assert.AreEqual(14, datos.Formularios.Count);
-            Assert.AreEqual(14, datos.Acciones.Count);
+            Assert.AreEqual(15, datos.Formularios.Count);
+            Assert.AreEqual(15, datos.Acciones.Count);
 
             string[] todosLosCodigos =
             {
@@ -63,7 +63,8 @@ namespace GymFlow.Tests
                 CodigosPermiso.UsuariosGestionar,
                 CodigosPermiso.GruposGestionar,
                 CodigosPermiso.CuotaEditarPrecio,
-                CodigosPermiso.AuditoriaVer
+                CodigosPermiso.AuditoriaVer,
+                CodigosPermiso.RespaldoGestionar
             };
             CollectionAssert.AreEquivalent(todosLosCodigos, datos.Acciones.Select(a => a.Codigo).ToList());
 
@@ -106,10 +107,10 @@ namespace GymFlow.Tests
             Assert.AreEqual(2, datos.Tipos.Count);
             Assert.AreEqual(1, datos.Cuotas.Count);
             Assert.AreEqual(4, datos.Modulos.Count);
-            Assert.AreEqual(14, datos.Formularios.Count);
-            Assert.AreEqual(14, datos.Acciones.Count);
+            Assert.AreEqual(15, datos.Formularios.Count);
+            Assert.AreEqual(15, datos.Acciones.Count);
             Assert.AreEqual(2, datos.Grupos.Count);
-            Assert.AreEqual(14, datos.Grupos.Single(g => g.Nombre == NombresGrupo.Administrador).Acciones.Count);
+            Assert.AreEqual(15, datos.Grupos.Single(g => g.Nombre == NombresGrupo.Administrador).Acciones.Count);
             Assert.AreEqual(8, datos.Grupos.Single(g => g.Nombre == NombresGrupo.Recepcionista).Acciones.Count);
         }
 
@@ -143,7 +144,7 @@ namespace GymFlow.Tests
             Assert.AreEqual(EstadosGrupo.Inactivo, recepcionista.Estado);
             Assert.AreEqual(7, recepcionista.Acciones.Count);
             Assert.IsFalse(recepcionista.Acciones.Any(a => a.Codigo == CodigosPermiso.MorososBaja));
-            Assert.AreEqual(13, administrador.Acciones.Count);
+            Assert.AreEqual(14, administrador.Acciones.Count);
             Assert.IsFalse(administrador.Acciones.Any(a => a.Codigo == CodigosPermiso.AutoingresoUsar));
         }
     }

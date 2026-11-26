@@ -1068,4 +1068,54 @@ namespace GymFlow.Tests
                 .ToList();
         }
     }
+
+    public class RespaldoRepositorioEnMemoria : IRespaldoRepositorio
+    {
+        public string NombreBase { get; set; } = "GymFlowDB_Pruebas";
+        public string RutaPorDefecto { get; set; } = @"C:\Backups";
+        public string UltimaRutaRespaldo { get; private set; }
+        public string UltimaRutaRestauracion { get; private set; }
+        public int CantidadRespaldos { get; private set; }
+        public int CantidadRestauraciones { get; private set; }
+        public Exception ExcepcionEnRespaldo { get; set; }
+        public Exception ExcepcionEnRestauracion { get; set; }
+        public Exception ExcepcionEnRutaPorDefecto { get; set; }
+
+        public string ObtenerNombreBaseActual()
+        {
+            return NombreBase;
+        }
+
+        public string ObtenerRutaPorDefecto()
+        {
+            if (ExcepcionEnRutaPorDefecto != null)
+            {
+                throw ExcepcionEnRutaPorDefecto;
+            }
+
+            return RutaPorDefecto;
+        }
+
+        public void GenerarRespaldo(string rutaArchivo)
+        {
+            if (ExcepcionEnRespaldo != null)
+            {
+                throw ExcepcionEnRespaldo;
+            }
+
+            UltimaRutaRespaldo = rutaArchivo;
+            CantidadRespaldos++;
+        }
+
+        public void RestaurarRespaldo(string rutaArchivo)
+        {
+            if (ExcepcionEnRestauracion != null)
+            {
+                throw ExcepcionEnRestauracion;
+            }
+
+            UltimaRutaRestauracion = rutaArchivo;
+            CantidadRestauraciones++;
+        }
+    }
 }

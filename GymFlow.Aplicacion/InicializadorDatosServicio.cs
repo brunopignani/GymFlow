@@ -53,7 +53,8 @@ namespace GymFlow.Aplicacion
                 {
                     ("Gestionar usuarios", CodigosPermiso.UsuariosGestionar, "Gestionar usuarios"),
                     ("Gestionar grupos", CodigosPermiso.GruposGestionar, "Gestionar grupos"),
-                    ("Auditoría", CodigosPermiso.AuditoriaVer, "Consultar auditoría del sistema")
+                    ("Auditoría", CodigosPermiso.AuditoriaVer, "Consultar auditoría del sistema"),
+                    ("Resguardo y restauración", CodigosPermiso.RespaldoGestionar, "Generar resguardos y restaurar base de datos")
                 }
             )
         };

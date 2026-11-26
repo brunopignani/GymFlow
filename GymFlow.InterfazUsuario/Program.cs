@@ -1,4 +1,4 @@
-﻿using GymFlow.Abstracciones;
+using GymFlow.Abstracciones;
 using GymFlow.Aplicacion;
 using GymFlow.ContextoBD;
 using GymFlow.Repositorio;
@@ -41,6 +41,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<IGrupoRepositorio, GrupoRepositorio>();
             servicios.AddScoped<IAccionRepositorio, AccionRepositorio>();
             servicios.AddScoped<IAuditoriaRepositorio, AuditoriaRepositorio>();
+            servicios.AddScoped<IRespaldoRepositorio>(_ => new RespaldoRepositorio(ConfiguracionBD.CadenaConexion));
             servicios.AddScoped<ITransaccionBD, TransaccionBD>();
 
             servicios.AddScoped<InscripcionServicio>();
@@ -55,6 +56,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<GrupoServicio>();
             servicios.AddScoped<CuotaServicio>();
             servicios.AddScoped<AuditoriaServicio>();
+            servicios.AddScoped<RespaldoServicio>();
             servicios.AddScoped<InicializadorDatosServicio>();
 
             servicios.AddTransient<FrmAdminInicial>();
@@ -75,6 +77,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddTransient<FrmPrecioCuota>();
             servicios.AddTransient<FrmCambiarClave>();
             servicios.AddTransient<FrmAuditoria>();
+            servicios.AddTransient<FrmRespaldo>();
 
             ServiceProviderOptions opciones = new ServiceProviderOptions();
             opciones.ValidateScopes = true;

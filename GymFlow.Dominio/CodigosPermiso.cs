@@ -16,5 +16,6 @@
         public const string GruposGestionar = "GRUPOS_GESTIONAR";
         public const string CuotaEditarPrecio = "CUOTA_EDITAR_PRECIO";
         public const string AuditoriaVer = "AUDITORIA_VER";
+        public const string RespaldoGestionar = "RESPALDO_GESTIONAR";
     }
 }
