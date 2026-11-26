@@ -49,6 +49,7 @@ namespace GymFlow.InterfazUsuario
             servicios.AddScoped<ActividadServicio>();
             servicios.AddScoped<CuentaCorrienteServicio>();
             servicios.AddScoped<CobroServicio>();
+            servicios.AddScoped<CobroFacade>();
             servicios.AddScoped<DebitoMensualServicio>();
             servicios.AddScoped<NotaCreditoServicio>();
             servicios.AddScoped<AjusteCuentaServicio>();
@@ -133,7 +134,7 @@ namespace GymFlow.InterfazUsuario
                             Application.Run(principal);
                         }
 
-                        if (SesionActual.EmpleadoActual != null)
+                        if (SesionActual.Instancia.EmpleadoActual != null)
                         {
                             break;
                         }

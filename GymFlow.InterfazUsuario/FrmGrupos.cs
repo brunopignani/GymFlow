@@ -418,10 +418,10 @@ namespace GymFlow.InterfazUsuario
 
         private void RefrescarPermisosSesion()
         {
-            if (SesionActual.UsuarioId > 0)
+            if (SesionActual.Instancia.UsuarioId > 0)
             {
-                IReadOnlySet<string> permisos = _usuarioServicio.ObtenerPermisosEfectivos(SesionActual.UsuarioId);
-                SesionActual.ActualizarPermisos(permisos);
+                IReadOnlySet<string> permisos = _usuarioServicio.ObtenerPermisosEfectivos(SesionActual.Instancia.UsuarioId);
+                SesionActual.Instancia.ActualizarPermisos(permisos);
             }
         }
 

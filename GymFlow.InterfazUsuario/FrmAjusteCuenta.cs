@@ -104,7 +104,7 @@ namespace GymFlow.InterfazUsuario
 
             this.lblEmpleado.Location = new Point(20, 223);
             this.lblEmpleado.Size = new Size(440, 20);
-            this.lblEmpleado.Text = "Empleado responsable: Nº " + SesionActual.EmpleadoId;
+            this.lblEmpleado.Text = "Empleado responsable: Nº " + SesionActual.Instancia.EmpleadoId;
 
             this.btnRegistrar.Location = new Point(20, 255);
             this.btnRegistrar.Size = new Size(190, 32);
@@ -224,7 +224,7 @@ namespace GymFlow.InterfazUsuario
             string pregunta = "Se registrará un ajuste de tipo " + tipo + " por " + importe.ToString("C2", CulturaMonetaria) + Environment.NewLine
                 + "Cliente: " + this.lblCliente.Text + Environment.NewLine
                 + "Motivo: " + motivo + Environment.NewLine
-                + "Empleado responsable: Nº " + SesionActual.EmpleadoId + Environment.NewLine + Environment.NewLine
+                + "Empleado responsable: Nº " + SesionActual.Instancia.EmpleadoId + Environment.NewLine + Environment.NewLine
                 + "El ajuste no podrá editarse ni eliminarse. ¿Confirma la operación?";
 
             if (MessageBox.Show(pregunta, "Ajuste de cuenta", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
@@ -237,7 +237,7 @@ namespace GymFlow.InterfazUsuario
 
             try
             {
-                bool registrado = _ajusteCuentaServicio.RegistrarAjuste(_clienteCargado.Id, SesionActual.EmpleadoId, tipo, importe, motivo);
+                bool registrado = _ajusteCuentaServicio.RegistrarAjuste(_clienteCargado.Id, SesionActual.Instancia.EmpleadoId, tipo, importe, motivo);
 
                 if (!registrado)
                 {

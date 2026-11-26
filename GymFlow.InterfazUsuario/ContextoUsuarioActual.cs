@@ -4,14 +4,14 @@ namespace GymFlow.InterfazUsuario
 {
     public class ContextoUsuarioActual : IContextoUsuarioActual
     {
-        public bool EstaAutenticado => SesionActual.EmpleadoActual != null;
+        public bool EstaAutenticado => SesionActual.Instancia.EmpleadoActual != null;
 
-        public int UsuarioId => SesionActual.UsuarioId;
+        public int UsuarioId => SesionActual.Instancia.UsuarioId;
 
-        public int EmpleadoId => SesionActual.EmpleadoId;
+        public int EmpleadoId => SesionActual.Instancia.EmpleadoId;
 
-        public string NombreUsuario => SesionActual.NombreUsuario;
+        public string NombreUsuario => SesionActual.Instancia.NombreUsuario;
 
-        public bool TienePermiso(string codigo) => SesionActual.TienePermiso(codigo);
+        public bool TienePermiso(string codigo) => SesionActual.Instancia.TienePermiso(codigo);
     }
 }

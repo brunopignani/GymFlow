@@ -85,7 +85,7 @@ namespace GymFlow.InterfazUsuario
                     ? _usuarioServicio.ObtenerPermisosEfectivos(empleado.UsuarioId.Value)
                     : null;
 
-                SesionActual.Iniciar(empleado, permisos);
+                SesionActual.Instancia.Iniciar(empleado, permisos);
                 this.DialogResult = DialogResult.OK;
             }
             catch (AuditoriaLoginException ex)

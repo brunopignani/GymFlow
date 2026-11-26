@@ -821,10 +821,10 @@ namespace GymFlow.InterfazUsuario
                     return;
                 }
 
-                if (empleado.UsuarioId.HasValue && empleado.UsuarioId.Value == SesionActual.UsuarioId)
+                if (empleado.UsuarioId.HasValue && empleado.UsuarioId.Value == SesionActual.Instancia.UsuarioId)
                 {
-                    IReadOnlySet<string> permisos = _usuarioServicio.ObtenerPermisosEfectivos(SesionActual.UsuarioId);
-                    SesionActual.ActualizarPermisos(permisos);
+                    IReadOnlySet<string> permisos = _usuarioServicio.ObtenerPermisosEfectivos(SesionActual.Instancia.UsuarioId);
+                    SesionActual.Instancia.ActualizarPermisos(permisos);
                 }
 
                 CargarUsuarios(empleado.Id);

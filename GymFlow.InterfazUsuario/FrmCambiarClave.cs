@@ -88,7 +88,7 @@ namespace GymFlow.InterfazUsuario
 
             try
             {
-                bool cambiada = _usuarioServicio.CambiarClave(SesionActual.UsuarioId, this.txtActual.Text, this.txtNueva.Text);
+                bool cambiada = _usuarioServicio.CambiarClave(SesionActual.Instancia.UsuarioId, this.txtActual.Text, this.txtNueva.Text);
 
                 if (!cambiada)
                 {

@@ -13,9 +13,7 @@ namespace GymFlow.InterfazUsuario
     {
         private static readonly CultureInfo CulturaMonetaria = CultureInfo.GetCultureInfo("es-AR");
 
-        private readonly ClienteServicio _clienteServicio;
-        private readonly CobroServicio _cobroServicio;
-        private readonly CuentaCorrienteServicio _cuentaCorrienteServicio;
+        private readonly CobroFacade _cobroFacade;
 
         private Cliente _clienteCargado;
         private ResumenCobro _resumenCobroActual;
@@ -35,11 +33,9 @@ namespace GymFlow.InterfazUsuario
         private Button btnRegistrar;
         private ErrorProvider errorProvider;
 
-        public FrmCobro(ClienteServicio clienteServicio, CobroServicio cobroServicio, CuentaCorrienteServicio cuentaCorrienteServicio)
+        public FrmCobro(CobroFacade cobroFacade)
         {
-            _clienteServicio = clienteServicio;
-            _cobroServicio = cobroServicio;
-            _cuentaCorrienteServicio = cuentaCorrienteServicio;
+            _cobroFacade = cobroFacade;
 
             InitializeComponent();
         }
@@ -79,7 +75,7 @@ namespace GymFlow.InterfazUsuario
 
             this.lblEmpleado.Location = new Point(20, 85);
             this.lblEmpleado.Size = new Size(380, 20);
-            this.lblEmpleado.Text = "Empleado que cobra: Nº " + SesionActual.EmpleadoId;
+            this.lblEmpleado.Text = "Empleado que cobra: Nº " + SesionActual.Instancia.EmpleadoId;
 
             this.lblSaldo.Location = new Point(20, 115);
             this.lblSaldo.Size = new Size(380, 20);
@@ -104,7 +100,7 @@ namespace GymFlow.InterfazUsuario
             this.cmbMetodoPago.Location = new Point(150, 222);
             this.cmbMetodoPago.Size = new Size(200, 21);
             this.cmbMetodoPago.DropDownStyle = ComboBoxStyle.DropDownList;
-            foreach (string medio in CobroServicio.MediosPagoValidos)
+            foreach (string medio in _cobroFacade.ObtenerMediosPagoValidos())
             {
                 this.cmbMetodoPago.Items.Add(medio);
             }
@@ -171,17 +167,17 @@ namespace GymFlow.InterfazUsuario
 
             try
             {
-                Cliente cliente = _clienteServicio.GetClienteByDNI(dni);
+                ResultadoConsultaCobro consulta = _cobroFacade.BuscarClienteParaCobro(dni);
 
-                if (cliente == null)
+                if (consulta == null || !consulta.ClienteEncontrado || consulta.Cliente == null)
                 {
                     MessageBox.Show("No existe un cliente con ese DNI.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                _clienteCargado = cliente;
-                this.lblCliente.Text = cliente.Apellido + " " + cliente.Nombre + " (DNI " + cliente.Dni + ")";
-                MostrarResumenCobro();
+                _clienteCargado = consulta.Cliente;
+                this.lblCliente.Text = consulta.Cliente.Apellido + " " + consulta.Cliente.Nombre + " (DNI " + consulta.Cliente.Dni + ")";
+                MostrarResumenCobro(consulta.Resumen);
             }
             catch (Exception ex)
             {
@@ -190,10 +186,9 @@ namespace GymFlow.InterfazUsuario
             }
         }
 
-        private void MostrarResumenCobro()
+        private void MostrarResumenCobro(ResumenCobro resumen)
         {
             this.errorProvider.Clear();
-            ResumenCobro resumen = _cobroServicio.ObtenerResumenCobro(_clienteCargado.Id);
 
             if (resumen == null)
             {
@@ -315,11 +310,11 @@ namespace GymFlow.InterfazUsuario
 
             try
             {
-                bool registrado = _cobroServicio.RegistrarCobro(_clienteCargado.Id, SesionActual.EmpleadoId, importe, metodoPago);
+                ResultadoRegistroCobro resultado = _cobroFacade.RegistrarCobro(_clienteCargado.Id, SesionActual.Instancia.EmpleadoId, importe, metodoPago);
 
-                if (!registrado)
+                if (!resultado.Registrado)
                 {
-                    ResumenCobro resumen = _cobroServicio.ObtenerResumenCobro(_clienteCargado.Id);
+                    ResumenCobro resumen = resultado.ResumenActualizado;
                     string mensaje = resumen != null && !resumen.PermiteRegistrarCobro
                         ? DescribirBloqueo(resumen)
                         : "No se pudo registrar el cobro. Verifique que el importe sea exactamente el mínimo exigible, que el cliente tenga cuenta corriente y cuota asignada, que el empleado exista y que los tipos de movimiento estén cargados.";
@@ -329,10 +324,10 @@ namespace GymFlow.InterfazUsuario
                     return;
                 }
 
-                MostrarRecibo();
+                MostrarRecibo(resultado.Recibo);
 
                 this.txtImporte.Text = string.Empty;
-                MostrarResumenCobro();
+                MostrarResumenCobro(resultado.ResumenActualizado);
             }
             catch (Exception ex)
             {
@@ -346,19 +341,8 @@ namespace GymFlow.InterfazUsuario
             }
         }
 
-        private void MostrarRecibo()
+        private void MostrarRecibo(ReciboPago recibo)
         {
-            ReciboPago recibo = null;
-
-            try
-            {
-                recibo = BuscarUltimoRecibo(_clienteCargado.Id);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-            }
-
             if (recibo == null)
             {
                 MessageBox.Show("El cobro se registró correctamente, pero no se pudo mostrar el recibo.", "Registrar cobro", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -373,30 +357,6 @@ namespace GymFlow.InterfazUsuario
                 + "Empleado: Nº " + recibo.EmpleadoId;
 
             MessageBox.Show(detalle, "Recibo de pago", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private ReciboPago BuscarUltimoRecibo(int clienteId)
-        {
-            ResumenCuentaCorriente resumen = _cuentaCorrienteServicio.ConsultarCuentaCorriente(clienteId);
-
-            if (resumen == null)
-            {
-                return null;
-            }
-
-            ReciboPago ultimo = null;
-
-            foreach (Movimiento movimiento in resumen.Movimientos)
-            {
-                ReciboPago recibo = movimiento.Comprobante as ReciboPago;
-
-                if (recibo != null && (ultimo == null || recibo.Id > ultimo.Id))
-                {
-                    ultimo = recibo;
-                }
-            }
-
-            return ultimo;
         }
 
         private void txtImporte_Validating(object sender, CancelEventArgs e)

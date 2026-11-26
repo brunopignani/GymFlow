@@ -32,7 +32,7 @@ namespace GymFlow.InterfazUsuario
             _usuarioServicio = usuarioServicio;
 
             InitializeComponent();
-            SesionActual.PermisosActualizados += OnPermisosActualizados;
+            SesionActual.Instancia.PermisosActualizados += OnPermisosActualizados;
             this.FormClosed += FrmPrincipal_FormClosed;
             AplicarPermisosMenu();
         }
@@ -78,7 +78,7 @@ namespace GymFlow.InterfazUsuario
 
             this.lblBienvenida.Location = new Point(30, 60);
             this.lblBienvenida.Size = new Size(520, 30);
-            this.lblBienvenida.Text = "Sesión iniciada: " + SesionActual.EmpleadoActual.Apellido + " " + SesionActual.EmpleadoActual.Nombre;
+            this.lblBienvenida.Text = "Sesión iniciada: " + SesionActual.Instancia.EmpleadoActual.Apellido + " " + SesionActual.Instancia.EmpleadoActual.Nombre;
             this.lblBienvenida.Font = new Font(this.lblBienvenida.Font, FontStyle.Bold);
 
             this.lblSinPermisos.Location = new Point(30, 120);
@@ -129,12 +129,12 @@ namespace GymFlow.InterfazUsuario
         private void FrmPrincipal_FormClosed(object sender, FormClosedEventArgs e)
         {
             RegistrarLogoutSiCorresponde();
-            SesionActual.PermisosActualizados -= OnPermisosActualizados;
+            SesionActual.Instancia.PermisosActualizados -= OnPermisosActualizados;
         }
 
         private void RegistrarLogoutSiCorresponde()
         {
-            if (_logoutRegistrado || SesionActual.EmpleadoActual == null)
+            if (_logoutRegistrado || SesionActual.Instancia.EmpleadoActual == null)
             {
                 return;
             }
@@ -155,7 +155,7 @@ namespace GymFlow.InterfazUsuario
         {
             foreach (KeyValuePair<ToolStripMenuItem, string> par in _permisosPorItem)
             {
-                par.Key.Visible = SesionActual.TienePermiso(par.Value);
+                par.Key.Visible = SesionActual.Instancia.TienePermiso(par.Value);
             }
 
             ActualizarVisibilidadContenedor(this.menuProcesosMasivos);
@@ -164,7 +164,7 @@ namespace GymFlow.InterfazUsuario
             ActualizarVisibilidadContenedor(this.menuFinanzas);
             ActualizarVisibilidadContenedor(this.menuSeguridad);
 
-            this.lblSinPermisos.Visible = SesionActual.Permisos.Count == 0;
+            this.lblSinPermisos.Visible = SesionActual.Instancia.Permisos.Count == 0;
         }
 
         private static void ActualizarVisibilidadContenedor(ToolStripMenuItem contenedor)
@@ -261,7 +261,7 @@ namespace GymFlow.InterfazUsuario
         public void CerrarSesionPostRestauracion()
         {
             _logoutRegistrado = true;
-            SesionActual.CerrarSesion();
+            SesionActual.Instancia.CerrarSesion();
             this.Close();
         }
 
@@ -273,7 +273,7 @@ namespace GymFlow.InterfazUsuario
         private void itemCerrarSesion_Click(object sender, EventArgs e)
         {
             RegistrarLogoutSiCorresponde();
-            SesionActual.CerrarSesion();
+            SesionActual.Instancia.CerrarSesion();
             this.Close();
         }
     }

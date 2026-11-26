@@ -5,53 +5,111 @@ using System.Linq;
 
 namespace GymFlow.InterfazUsuario
 {
-    public static class SesionActual
+    public sealed class SesionActual
     {
-        public static Empleado EmpleadoActual { get; private set; }
+        private static readonly Lazy<SesionActual> _instancia =
+            new Lazy<SesionActual>(() => new SesionActual());
 
-        public static IReadOnlySet<string> Permisos { get; private set; } =
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly object _bloqueo = new object();
+        private Empleado _empleadoActual;
+        private IReadOnlySet<string> _permisos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        public static event Action PermisosActualizados;
-
-        public static int EmpleadoId
+        private SesionActual()
         {
-            get { return EmpleadoActual == null ? 0 : EmpleadoActual.Id; }
         }
 
-        public static int UsuarioId
+        public static SesionActual Instancia => _instancia.Value;
+
+        public Empleado EmpleadoActual
         {
-            get { return (EmpleadoActual == null || !EmpleadoActual.UsuarioId.HasValue) ? 0 : EmpleadoActual.UsuarioId.Value; }
+            get
+            {
+                lock (_bloqueo)
+                {
+                    return _empleadoActual;
+                }
+            }
         }
 
-        public static string NombreUsuario
+        public IReadOnlySet<string> Permisos
         {
-            get { return (EmpleadoActual == null || EmpleadoActual.Usuario == null) ? string.Empty : (EmpleadoActual.Usuario.Nombre ?? string.Empty); }
+            get
+            {
+                lock (_bloqueo)
+                {
+                    return _permisos;
+                }
+            }
         }
 
-        public static void Iniciar(Empleado empleado, IReadOnlySet<string> permisos)
+        public event Action PermisosActualizados;
+
+        public int EmpleadoId
         {
-            EmpleadoActual = empleado;
-            Permisos = CrearCopiaPermisos(permisos);
+            get
+            {
+                Empleado empleado = EmpleadoActual;
+                return empleado == null ? 0 : empleado.Id;
+            }
         }
 
-        public static void ActualizarPermisos(IReadOnlySet<string> nuevosPermisos)
+        public int UsuarioId
         {
-            Permisos = CrearCopiaPermisos(nuevosPermisos);
+            get
+            {
+                Empleado empleado = EmpleadoActual;
+                return (empleado == null || !empleado.UsuarioId.HasValue) ? 0 : empleado.UsuarioId.Value;
+            }
+        }
+
+        public string NombreUsuario
+        {
+            get
+            {
+                Empleado empleado = EmpleadoActual;
+                return (empleado == null || empleado.Usuario == null) ? string.Empty : (empleado.Usuario.Nombre ?? string.Empty);
+            }
+        }
+
+        public void Iniciar(Empleado empleado, IReadOnlySet<string> permisos)
+        {
+            lock (_bloqueo)
+            {
+                _empleadoActual = empleado;
+                _permisos = CrearCopiaPermisos(permisos);
+            }
+        }
+
+        public void ActualizarPermisos(IReadOnlySet<string> nuevosPermisos)
+        {
+            lock (_bloqueo)
+            {
+                _permisos = CrearCopiaPermisos(nuevosPermisos);
+            }
+
             PermisosActualizados?.Invoke();
         }
 
-        public static bool TienePermiso(string codigo)
+        public bool TienePermiso(string codigo)
         {
-            return EmpleadoActual != null
-                && !string.IsNullOrWhiteSpace(codigo)
-                && Permisos.Contains(codigo);
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return false;
+            }
+
+            lock (_bloqueo)
+            {
+                return _empleadoActual != null && _permisos.Contains(codigo);
+            }
         }
 
-        public static void CerrarSesion()
+        public void CerrarSesion()
         {
-            EmpleadoActual = null;
-            Permisos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            lock (_bloqueo)
+            {
+                _empleadoActual = null;
+                _permisos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private static IReadOnlySet<string> CrearCopiaPermisos(IReadOnlySet<string> permisos)
